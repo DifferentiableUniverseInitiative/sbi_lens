@@ -20,7 +20,7 @@ lognormal_params = np.loadtxt(DATA_DIR / "lognormal_shift.csv",
 
 def shift_fn(omega_m, sigma_8):
     """
-  Compute the interpolated shift parameters as function of cosmology
+  Compute the interpolated shift parameters of the lognormal distribution as function of cosmology
   -----------
   omega_m: float
   The total matter density fraction.
@@ -46,14 +46,26 @@ def shift_fn(omega_m, sigma_8):
     return lambda_shift
 
 
-def make_power_map(pk_fn, N, field_size, zero_freq_val=0.0):
+def make_power_map(pk_fn, N, map_size, zero_freq_val=0.0):
     """
-  Generate a gaussian lensing map from a given matter power spectrum
+  Calculate fourier-space Gaussian fields generated with a given power spectrum.
   -----------
   pk_fn:
-  N:
-  field_size:
-  zero_freq_val:
+   Given power spectrum
+  
+  N: Int
+   Number of grid-points on a side or number of wavenumbers to use.
+  
+  map_size: Int
+  The total angular size area is given by map_size x map_size
+
+  zero_freq_val: float
+   The zero point to shift the vector
+
+  Returns
+  -------  
+  power_map: Jax.DeviceArray (N,N)
+  Image
   
   """
     k = 2 * jnp.pi * jnp.fft.fftfreq(N, d=field_size / N)
@@ -61,17 +73,27 @@ def make_power_map(pk_fn, N, field_size, zero_freq_val=0.0):
     k = jnp.sqrt(kcoords[0]**2 + kcoords[1]**2)
     ps_map = pk_fn(k)
     ps_map = ps_map.at[0, 0].set(zero_freq_val)
-    return ps_map * (N / field_size)**2
+    power_map = ps_map * (N / field_size)**2
+    return power_map
 
 
 def make_lognormal_power_map(power_map, shift, zero_freq_val=0.0):
     """
-  Generate a log-normal lensing map from a given aussian lensing map
+  Calculate Log-Normal lensing fields with given Gaussian fields.
   -----------
-  power_map:
-  shift:
-  zero_freq_val:
-
+  power_map: Jax.DeviceArray 
+  Fourier-space Gaussian fields generated with a given power spectrum
+  
+  shift: Float
+  The shift parameter of the lognormal distribution with a given cosmology
+  
+  zero_freq_val: float
+  The zero point to shift the vector
+  
+  Returns
+  -------
+  power_spectrum_for_lognorm: Jax.DeviceArray
+  Log-Normal lensing fields
   """
     power_spectrum_for_lognorm = jnp.fft.ifft2(power_map).real
     power_spectrum_for_lognorm = jnp.log(1 +
@@ -89,7 +111,7 @@ def lensingLogNormal(N=128,
                      model_type='lognormal',
                      with_noise=True):
     """
-  Calculate Log-Normal lensing fields with given power spectra.
+  Calculate Log-Normal lensing convergence map.
   -----------
   N: int
   Number of pixels on the map.
@@ -113,7 +135,7 @@ def lensingLogNormal(N=128,
   Returns
   -------
   x: Jax.DeviceArray (N,N)
-  Lensing lognormal convergence map
+  Lensing convergence map
   """
 
     pix_area = (map_size * 60 / N)**2

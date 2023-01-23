@@ -68,7 +68,7 @@ def make_power_map(pk_fn, N, map_size, zero_freq_val=0.0):
   Image
   
   """
-    k = 2 * jnp.pi * jnp.fft.fftfreq(N, d=field_size / N)
+    k = 2 * jnp.pi * jnp.fft.fftfreq(N, d=map_size / N)
     kcoords = jnp.meshgrid(k, k)
     k = jnp.sqrt(kcoords[0]**2 + kcoords[1]**2)
     ps_map = pk_fn(k)

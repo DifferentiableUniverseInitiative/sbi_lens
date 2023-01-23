@@ -5,10 +5,8 @@ import tensorflow_probability as tfp; tfp = tfp.substrates.jax
 tfd= tfp.distributions
 tfb = tfp.bijectors
 from tensorflow_datasets.core.utils import gcs_utils
-import numpy as np
 import jax
 from functools import partial
-from pathlib import Path
 from sbi_lens.simulator import LogNormal_field
 from sbi_lens.gen_dataset.utils import get_samples_and_scores
 

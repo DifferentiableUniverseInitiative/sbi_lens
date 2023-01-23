@@ -73,7 +73,7 @@ def make_power_map(pk_fn, N, map_size, zero_freq_val=0.0):
     k = jnp.sqrt(kcoords[0]**2 + kcoords[1]**2)
     ps_map = pk_fn(k)
     ps_map = ps_map.at[0, 0].set(zero_freq_val)
-    power_map = ps_map * (N / field_size)**2
+    power_map = ps_map * (N / map_size)**2
     return power_map
 
 

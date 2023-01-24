@@ -1,3 +1,4 @@
+
 #!/usr/bin/env python
 # coding: utf-8
 
@@ -15,12 +16,11 @@ class CheckTypesFilter(logging.Filter):
 logger.addFilter(CheckTypesFilter())
 
 from tqdm import tqdm
-import pickle
-from functools import partial
 from chainconsumer import ChainConsumer
 from pathlib import Path
 
 import jax
+import pickle
 import jax.numpy as jnp
 from jax.lib import xla_bridge
 
@@ -34,11 +34,10 @@ tfb = tfp.bijectors
 import tensorflow_datasets as tfds
 import tensorflow as tf
 import haiku as hk
-from haiku._src.nets.resnet import ResNet18
 import optax
-from sbi_lens.normflow.models import AffineSigmoidCoupling, ConditionalRealNVP
+from haiku._src.nets.resnet import ResNet18
+from absl import app
 import numpy as np
-from functools import partial
 from absl import flags
 
 gpus = tf.config.experimental.list_physical_devices(device_type='GPU')
@@ -98,29 +97,15 @@ def data_preprocessing(Augmentation_with_noise=False):
     return ds_train 
 
 def train_compressor(ds_train):
-    bijector_layers_compressor = [128] * 2
-    bijector_compressor = partial(AffineSigmoidCoupling,
-                              layers=bijector_layers_compressor,
-                              n_components=16,
-                              activation=jax.nn.silu)
-    NF_compressor = partial(ConditionalRealNVP,
-                        n_layers=4,
-                        bijector_fn=bijector_compressor)
-    class Flow_nd_Compressor(hk.Module):
-        def __call__(self, y):
-            nvp = NF_compressor(2)(y)
-            return nvp
-        
-    nf = hk.without_apply_rng(
-    hk.transform(lambda theta, y: Flow_nd_Compressor()
-                 (y).log_prob(theta).squeeze()))
+    
+    nf=compressor_conf()
     params_nf = nf.init(jax.random.PRNGKey(8), 0.5 * jnp.ones([1, 2]),
                     0.5 * jnp.ones([1, 2]))
     compressor = hk.transform_with_state(lambda x: ResNet18(2)
                                      (x, is_training=True))
     parameters_resnet, opt_state_resnet = compressor.init(
     jax.random.PRNGKey(873457568), 0.5 * jnp.ones([1, 128, 128, 1]))
-    parameters_compressor = hk.data_structures.merge(parameters_resnet, params_nf)
+    parameters_compressor = hk.data_structures.merge(parameters_resnet, params_nf)   
     lr_scheduler = optax.piecewise_constant_schedule(
         init_value=0.001,
         boundaries_and_scales={
@@ -146,29 +131,8 @@ def train_compressor(ds_train):
             batch_loss.append(l)
     return parameters_compressor, opt_state_resnet
 
-def train_estimator(ds_train,parameters_compressor, opt_state_resnet):   
-    truth = jnp.array([0.3, 0.8])
-    # create model for inference
-    bijector_layers = [128] * 2
-    bijector_npe = partial(AffineSigmoidCoupling,
-                        layers=bijector_layers,
-                        n_components=16,
-                        activation=jax.nn.silu)
-    NF_npe = partial(ConditionalRealNVP, n_layers=4, bijector_fn=bijector_npe)
-    scale_theta = jnp.array([0.8183354, 0.8473379])
-    shift_theta = jnp.array([-0.53523827, -0.50171137])
-    class SmoothNPE(hk.Module):
-        def __call__(self, y):
-            net = y
-            nvp = NF_npe(2)(net)
-            return tfd.TransformedDistribution(
-                nvp, tfb.Chain([tfb.Scale(scale_theta),
-                                tfb.Shift(shift_theta)]))
-    nvp_nd = hk.without_apply_rng(
-        hk.transform(lambda theta, y: SmoothNPE()(y).log_prob(theta).squeeze()))
-    nvp_sample_nd = hk.transform(lambda x: SmoothNPE()(x).sample(
-        len(sample_full_field), seed=hk.next_rng_key()))
-    # init parameters
+def train_estimator(ds_train, parameters_compressor, opt_state_resnet, sample_full_field, scale_theta, shift_theta):   
+    nvp_nd, nvp_sample_nd =estimator_conf(scale_theta, shift_theta)
     rng_seq = hk.PRNGSequence(1989)
     params_nd = nvp_nd.init(next(rng_seq), 0.5 * jnp.ones([1, 2]),
                             0.5 * jnp.ones([1, 2]))
@@ -203,8 +167,6 @@ def main(_):
     sample_power_spectrum = np.load(DATA_DIR /
                                     'sample_power_spectrum_toy_model.npy')
     sample_full_field = np.load(DATA_DIR / 'sample_full_field.npy')
-    nvp_sample_nd = hk.transform(lambda x: SmoothNPE()(x).sample(
-        len(sample_power_spectrum), seed=hk.next_rng_key()))
     rng_seq = hk.PRNGSequence(1989)
     parameters_compressor, opt_state_resnet= train_compressor(ds_train)
     y, _ = compressor.apply(parameters_compressor, opt_state_resnet, None,
@@ -227,8 +189,12 @@ def main(_):
     c.add_chain(sample_nd, parameters=["$\Omega_c$", "$\sigma_8$"], name='SBI')
 
     fig = c.plotter.plot(figsize="column", truth=[0.3, 0.8])
+    with open("data/params_nd_compressor.pkl", "wb") as fp:
+        pickle.dump(parameters_compressor, fp)
 
-    
-    
+    with open("data/opt_state_resnet.pkl", "wb") as fp:
+        pickle.dump(opt_state_resnet, fp)
+
+   
 if __name__ == "__main__":
     app.run(main)

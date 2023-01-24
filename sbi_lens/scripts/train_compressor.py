@@ -63,7 +63,7 @@ flags.DEFINE_integer("batch_size_com", 128,
 flags.DEFINE_integer("total_steps_com", 200000, "Number of iteration")
 
 flags.DEFINE_integer("score_weight", 0, "Score weight")
-flags.DEFINE_integer("total_steps_sbi", 50000, "Number of iteration")
+flags.DEFINE_integer("total_steps_est", 50000, "Number of iteration")
 
 FLAGS = flags.FLAGS
 
@@ -86,8 +86,8 @@ def augmentation_with_noise(example):
         'score': example['score']
     }
 
-def data_preprocessing(model_name,data_dir, Augmentation_with_noise=False):
-    ds = tfds.load(model_name, split='train', data_dir=data_dir)
+def data_preprocessing(Augmentation_with_noise=False):
+    ds = tfds.load(FLAGS.model_name, split='train', data_dir=FLAGS.data_dir)
     ds = ds.repeat()
     ds = ds.shuffle(1000)
     if Augmentation_with_noise:
@@ -96,31 +96,21 @@ def data_preprocessing(model_name,data_dir, Augmentation_with_noise=False):
     ds = ds.prefetch(tf.data.experimental.AUTOTUNE)
     ds_train = iter(tfds.as_numpy(ds))
     return ds_train 
-ds = tfds.load(FLAGS.model_name, split='train', data_dir=FLAGS.data_dir)
 
-
-
-def train_compressor(total_steps):
-    # compressor model
+def train_compressor(ds_train):
     bijector_layers_compressor = [128] * 2
-
     bijector_compressor = partial(AffineSigmoidCoupling,
                               layers=bijector_layers_compressor,
                               n_components=16,
                               activation=jax.nn.silu)
-
     NF_compressor = partial(ConditionalRealNVP,
                         n_layers=4,
                         bijector_fn=bijector_compressor)
-
-
     class Flow_nd_Compressor(hk.Module):
-
         def __call__(self, y):
             nvp = NF_compressor(2)(y)
             return nvp
-
-
+        
     nf = hk.without_apply_rng(
     hk.transform(lambda theta, y: Flow_nd_Compressor()
                  (y).log_prob(theta).squeeze()))
@@ -134,22 +124,20 @@ def train_compressor(total_steps):
     lr_scheduler = optax.piecewise_constant_schedule(
         init_value=0.001,
         boundaries_and_scales={
-            int(total_steps * 0.1): 0.7,
-            int(total_steps * 0.2): 0.7,
-            int(total_steps * 0.3): 0.7,
-            int(total_steps * 0.4): 0.7,
-            int(total_steps * 0.5): 0.7,
-            int(total_steps * 0.6): 0.7,
-            int(total_steps * 0.7): 0.7,
-            int(total_steps * 0.8): 0.7,
-            int(total_steps * 0.9): 0.7
+            int(FLAGS.total_steps_com * 0.1): 0.7,
+            int(FLAGS.total_steps_com * 0.2): 0.7,
+            int(FLAGS.total_steps_com * 0.3): 0.7,
+            int(FLAGS.total_steps_com * 0.4): 0.7,
+            int(FLAGS.total_steps_com * 0.5): 0.7,
+            int(FLAGS.total_steps_com * 0.6): 0.7,
+            int(FLAGS.total_steps_com * 0.7): 0.7,
+            int(FLAGS.total_steps_com * 0.8): 0.7,
+            int(FLAGS.total_steps_com * 0.9): 0.7
         })
-
     optimizer_c = optax.adam(learning_rate=lr_scheduler)
     opt_state_c = optimizer_c.init(parameters_compressor)
-
     batch_loss = []
-    for batch in tqdm(range(total_steps)):
+    for batch in tqdm(range(FLAGS.total_steps_com)):
         sample = next(ds_train)
         l, parameters_compressor, opt_state_c, opt_state_resnet = update_compressor_with_vmim(
             parameters_compressor, opt_state_c, sample['theta'],
@@ -158,64 +146,45 @@ def train_compressor(total_steps):
             batch_loss.append(l)
     return parameters_compressor, opt_state_resnet
 
-def train_estimator():   
-    # load observation m_data
+def train_estimator(ds_train,parameters_compressor, opt_state_resnet):   
     truth = jnp.array([0.3, 0.8])
-    m_data = jnp.load(DATA_DIR / 'm_data_lensing.npy')
-    # load true power psectrum and full field posteriors
-    sample_power_spectrum = np.load(DATA_DIR /
-                                    'sample_power_spectrum_toy_model.npy')
-    sample_full_field = np.load(DATA_DIR / 'sample_full_field.npy')
-    # SBI part
     # create model for inference
-
     bijector_layers = [128] * 2
-
     bijector_npe = partial(AffineSigmoidCoupling,
                         layers=bijector_layers,
                         n_components=16,
                         activation=jax.nn.silu)
-
     NF_npe = partial(ConditionalRealNVP, n_layers=4, bijector_fn=bijector_npe)
-
     scale_theta = jnp.array([0.8183354, 0.8473379])
     shift_theta = jnp.array([-0.53523827, -0.50171137])
-
     class SmoothNPE(hk.Module):
-
         def __call__(self, y):
             net = y
             nvp = NF_npe(2)(net)
             return tfd.TransformedDistribution(
                 nvp, tfb.Chain([tfb.Scale(scale_theta),
                                 tfb.Shift(shift_theta)]))
-
-
     nvp_nd = hk.without_apply_rng(
         hk.transform(lambda theta, y: SmoothNPE()(y).log_prob(theta).squeeze()))
     nvp_sample_nd = hk.transform(lambda x: SmoothNPE()(x).sample(
         len(sample_full_field), seed=hk.next_rng_key()))
-
     # init parameters
     rng_seq = hk.PRNGSequence(1989)
     params_nd = nvp_nd.init(next(rng_seq), 0.5 * jnp.ones([1, 2]),
                             0.5 * jnp.ones([1, 2]))
-
-
-
     # training
     lr_scheduler = optax.piecewise_constant_schedule(
         init_value=0.001,
         boundaries_and_scales={
-            int(FLAGS.total_steps * 0.2): 0.7,
-            int(FLAGS.total_steps * 0.4): 0.7,
-            int(FLAGS.total_steps * 0.6): 0.7,
-            int(FLAGS.total_steps * 0.8): 0.7
+            int(FLAGS.FLAGS.total_steps_est * 0.2): 0.7,
+            int(FLAGS.FLAGS.total_steps_est * 0.4): 0.7,
+            int(FLAGS.FLAGS.total_steps_est * 0.6): 0.7,
+            int(FLAGS.FLAGS.total_steps_est * 0.8): 0.7
         })
     optimizer = optax.adam(learning_rate=lr_scheduler)
     opt_state = optimizer.init(params_nd)
     batch_loss = []
-    for batch in tqdm(range(FLAGS.total_steps)):
+    for batch in tqdm(range(FLAGS.total_steps_est)):
         sample = next(ds_train)
         l, params_nd, opt_state = update(params_nd, parameters_compressor,
                                         opt_state, opt_state_resnet,
@@ -224,26 +193,30 @@ def train_estimator():
         if batch % 100 == 0:
             batch_loss.append()
 
-    return lr_scheduler, params_nd, batch_loss
+    return lr_scheduler, params_nd
 
 
 def main(_):
     # plot resultst
+    ds_train=data_preprocessing()
+    m_data = jnp.load(DATA_DIR /'m_data_lensing.npy')
+    sample_power_spectrum = np.load(DATA_DIR /
+                                    'sample_power_spectrum_toy_model.npy')
+    sample_full_field = np.load(DATA_DIR / 'sample_full_field.npy')
     nvp_sample_nd = hk.transform(lambda x: SmoothNPE()(x).sample(
         len(sample_power_spectrum), seed=hk.next_rng_key()))
     rng_seq = hk.PRNGSequence(1989)
+    parameters_compressor, opt_state_resnet= train_compressor(ds_train)
     y, _ = compressor.apply(parameters_compressor, opt_state_resnet, None,
                             m_data.reshape([1, 128, 128, 1]))
+    lr_scheduler, params_nd =train_estimator(ds_train, parameters_compressor, opt_state_resnet)
     sample_nd = nvp_sample_nd.apply(params_nd,
                                     rng=next(rng_seq),
                                     x=y *
                                     jnp.ones([len(sample_power_spectrum), 2]))
 
-
     optimizer = optax.adam(learning_rate=lr_scheduler)
     opt_state = optimizer.init(params_nd)
-
-
     c = ChainConsumer()
     c.add_chain(sample_power_spectrum,
                 parameters=["$\Omega_c$", "$\sigma_8$"],

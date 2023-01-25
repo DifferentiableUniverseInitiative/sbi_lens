@@ -6,7 +6,8 @@ import tensorflow_probability as tfp; tfp = tfp.experimental.substrates.jax
 tfb = tfp.bijectors
 tfd = tfp.distributions
 
-from sbi_lens.bijectors.bijectors import MixtureAffineSigmoidBijector
+from sbi_lens.normflow.bijectors.bijectors import MixtureAffineSigmoidBijector
+
 
 
 class AffineCoupling(hk.Module):

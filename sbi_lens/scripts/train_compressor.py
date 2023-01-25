@@ -1,4 +1,3 @@
-
 #!/usr/bin/env python
 # coding: utf-8
 
@@ -39,6 +38,8 @@ from haiku._src.nets.resnet import ResNet18
 from absl import app
 import numpy as np
 from absl import flags
+
+from sbi_lens.training.training_config import update_compressor_with_vmim, update, compressor_conf, estimator_conf
 
 gpus = tf.config.experimental.list_physical_devices(device_type='GPU')
 for gpu in gpus:
@@ -85,6 +86,7 @@ def augmentation_with_noise(example):
         'score': example['score']
     }
 
+
 def data_preprocessing(Augmentation_with_noise=False):
     ds = tfds.load(FLAGS.model_name, split='train', data_dir=FLAGS.data_dir)
     ds = ds.repeat()
@@ -94,18 +96,20 @@ def data_preprocessing(Augmentation_with_noise=False):
     ds = ds.batch(128)
     ds = ds.prefetch(tf.data.experimental.AUTOTUNE)
     ds_train = iter(tfds.as_numpy(ds))
-    return ds_train 
+    return ds_train
+
 
 def train_compressor(ds_train):
-    
-    nf=compressor_conf()
+
+    nf = compressor_conf()
     params_nf = nf.init(jax.random.PRNGKey(8), 0.5 * jnp.ones([1, 2]),
-                    0.5 * jnp.ones([1, 2]))
+                        0.5 * jnp.ones([1, 2]))
     compressor = hk.transform_with_state(lambda x: ResNet18(2)
-                                     (x, is_training=True))
+                                         (x, is_training=True))
     parameters_resnet, opt_state_resnet = compressor.init(
-    jax.random.PRNGKey(873457568), 0.5 * jnp.ones([1, 128, 128, 1]))
-    parameters_compressor = hk.data_structures.merge(parameters_resnet, params_nf)   
+        jax.random.PRNGKey(873457568), 0.5 * jnp.ones([1, 128, 128, 1]))
+    parameters_compressor = hk.data_structures.merge(parameters_resnet,
+                                                     params_nf)
     lr_scheduler = optax.piecewise_constant_schedule(
         init_value=0.001,
         boundaries_and_scales={
@@ -126,13 +130,16 @@ def train_compressor(ds_train):
         sample = next(ds_train)
         l, parameters_compressor, opt_state_c, opt_state_resnet = update_compressor_with_vmim(
             parameters_compressor, opt_state_c, sample['theta'],
-            sample['simulation'], opt_state_resnet)
+            sample['simulation'], opt_state_resnet, optimizer_c)
         if batch % 100 == 0:
             batch_loss.append(l)
-    return parameters_compressor, opt_state_resnet
+    return compressor, parameters_compressor, opt_state_resnet
 
-def train_estimator(ds_train, parameters_compressor, opt_state_resnet, sample_full_field, scale_theta, shift_theta):   
-    nvp_nd, nvp_sample_nd =estimator_conf(scale_theta, shift_theta)
+
+def train_estimator(ds_train, parameters_compressor, opt_state_resnet,
+                    sample_full_field, scale_theta, shift_theta):
+    nvp_nd, nvp_sample_nd = estimator_conf(scale_theta, shift_theta,
+                                           sample_full_field)
     rng_seq = hk.PRNGSequence(1989)
     params_nd = nvp_nd.init(next(rng_seq), 0.5 * jnp.ones([1, 2]),
                             0.5 * jnp.ones([1, 2]))
@@ -151,34 +158,34 @@ def train_estimator(ds_train, parameters_compressor, opt_state_resnet, sample_fu
     for batch in tqdm(range(FLAGS.total_steps_est)):
         sample = next(ds_train)
         l, params_nd, opt_state = update(params_nd, parameters_compressor,
-                                        opt_state, opt_state_resnet,
-                                        FLAGS.score_weight, sample['theta'],
-                                        sample['simulation'], sample['score'])
+                                         opt_state, opt_state_resnet,
+                                         FLAGS.score_weight, sample['theta'],
+                                         sample['simulation'], sample['score'],
+                                         optimizer)
         if batch % 100 == 0:
             batch_loss.append()
 
-    return lr_scheduler, params_nd
+    return params_nd, nvp_sample_nd
 
 
 def main(_):
     # plot resultst
-    ds_train=data_preprocessing()
-    m_data = jnp.load(DATA_DIR /'m_data_lensing.npy')
+    ds_train = data_preprocessing()
+    m_data = jnp.load(DATA_DIR / 'm_data_lensing.npy')
     sample_power_spectrum = np.load(DATA_DIR /
                                     'sample_power_spectrum_toy_model.npy')
     sample_full_field = np.load(DATA_DIR / 'sample_full_field.npy')
     rng_seq = hk.PRNGSequence(1989)
-    parameters_compressor, opt_state_resnet= train_compressor(ds_train)
+    compressor, parameters_compressor, opt_state_resnet = train_compressor(
+        ds_train)
     y, _ = compressor.apply(parameters_compressor, opt_state_resnet, None,
                             m_data.reshape([1, 128, 128, 1]))
-    lr_scheduler, params_nd =train_estimator(ds_train, parameters_compressor, opt_state_resnet)
+    params_nd, nvp_sample_nd = train_estimator(ds_train, parameters_compressor,
+                                               opt_state_resnet)
     sample_nd = nvp_sample_nd.apply(params_nd,
                                     rng=next(rng_seq),
                                     x=y *
                                     jnp.ones([len(sample_power_spectrum), 2]))
-
-    optimizer = optax.adam(learning_rate=lr_scheduler)
-    opt_state = optimizer.init(params_nd)
     c = ChainConsumer()
     c.add_chain(sample_power_spectrum,
                 parameters=["$\Omega_c$", "$\sigma_8$"],
@@ -189,12 +196,13 @@ def main(_):
     c.add_chain(sample_nd, parameters=["$\Omega_c$", "$\sigma_8$"], name='SBI')
 
     fig = c.plotter.plot(figsize="column", truth=[0.3, 0.8])
-    with open("data/params_nd_compressor.pkl", "wb") as fp:
+    with open(DATA_DIR / "params_nd_compressor.pkl", "wb") as fp:
         pickle.dump(parameters_compressor, fp)
 
-    with open("data/opt_state_resnet.pkl", "wb") as fp:
+    with open(DATA_DIR / "opt_state_resnet.pkl", "wb") as fp:
         pickle.dump(opt_state_resnet, fp)
+    fig.savefig(DATA_DIR / 'image.pdf')
 
-   
+
 if __name__ == "__main__":
     app.run(main)

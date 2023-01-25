@@ -8,7 +8,7 @@ tfb = tfp.bijectors
 from tensorflow_datasets.core.utils import gcs_utils
 import jax
 from functools import partial
-from sbi_lens.simulator import LogNormal_field
+from sbi_lens.simulator.LogNormal_field import lensingLogNormal
 from sbi_lens.gen_dataset.utils import get_samples_and_scores
 
 # disable internet connection
@@ -121,7 +121,7 @@ class LensingLogNormalDataset(tfds.core.GeneratorBasedBuilder):
     def _generate_examples(self, size):
         """Yields examples."""
 
-        model = partial(LogNormal_field, self.builder_config.N,
+        model = partial(lensingLogNormal, self.builder_config.N,
                         self.builder_config.map_size,
                         self.builder_config.gal_per_arcmin2,
                         self.builder_config.sigma_e,

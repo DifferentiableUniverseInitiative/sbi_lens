@@ -147,10 +147,10 @@ def train_estimator(ds_train, parameters_compressor, opt_state_resnet,
     lr_scheduler = optax.piecewise_constant_schedule(
         init_value=0.001,
         boundaries_and_scales={
-            int(FLAGS.FLAGS.total_steps_est * 0.2): 0.7,
-            int(FLAGS.FLAGS.total_steps_est * 0.4): 0.7,
-            int(FLAGS.FLAGS.total_steps_est * 0.6): 0.7,
-            int(FLAGS.FLAGS.total_steps_est * 0.8): 0.7
+            int(FLAGS.total_steps_est * 0.2): 0.7,
+            int(FLAGS.total_steps_est * 0.4): 0.7,
+            int(FLAGS.total_steps_est * 0.6): 0.7,
+            int(FLAGS.total_steps_est * 0.8): 0.7
         })
     optimizer = optax.adam(learning_rate=lr_scheduler)
     opt_state = optimizer.init(params_nd)

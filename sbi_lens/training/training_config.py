@@ -7,37 +7,8 @@ tfd = tfp.distributions
 tfb = tfp.bijectors
 import haiku as hk
 from sbi_lens.normflow.models import AffineSigmoidCoupling, ConditionalRealNVP
-
-import optax
-from sbi_lens.training.losses import loss_vmim, loss_fn
-
-
-@jax.jit
-def update_compressor_with_vmim(params, opt_state, mu, batch, state_resnet,
-                                optimizer_c):
-    """Single SGD update step."""
-    (loss,
-     opt_state_resnet), grads = jax.value_and_grad(loss_vmim,
-                                                   has_aux=True)(params, mu,
-                                                                 batch,
-                                                                 state_resnet)
-    updates, new_opt_state = optimizer_c.update(grads, opt_state)
-    new_params = optax.apply_updates(params, updates)
-
-    return loss, new_params, new_opt_state, opt_state_resnet
-
-
-@jax.jit
-def update(params, parameters_compressor, opt_state, opt_state_resnet, weight,
-           mu, batch, score, optimizer):
-    """Single SGD update step."""
-    loss, grads = jax.value_and_grad(loss_fn)(params, parameters_compressor,
-                                              opt_state_resnet, weight, mu,
-                                              batch, score)
-    updates, new_opt_state = optimizer.update(grads, opt_state, params)
-    new_params = optax.apply_updates(params, updates)
-
-    return loss, new_params, new_opt_state
+import jax.numpy as jnp
+from haiku._src.nets.resnet import ResNet18
 
 
 def compressor_conf():
@@ -59,11 +30,18 @@ def compressor_conf():
     nf = hk.without_apply_rng(
         hk.transform(lambda theta, y: Flow_nd_Compressor()
                      (y).log_prob(theta).squeeze()))
-    return nf
+    params_nf = nf.init(jax.random.PRNGKey(8), 0.5 * jnp.ones([1, 2]),
+                        0.5 * jnp.ones([1, 2]))
+    compressor = hk.transform_with_state(lambda x: ResNet18(2)
+                                         (x, is_training=True))
+    parameters_resnet, opt_state_resnet = compressor.init(
+        jax.random.PRNGKey(873457568), 0.5 * jnp.ones([1, 128, 128, 1]))
+    parameters_compressor = hk.data_structures.merge(parameters_resnet,
+                                                     params_nf)
+    return nf, compressor, parameters_compressor, opt_state_resnet
 
 
 def estimator_conf(scale_theta, shift_theta, sample):
-    # create model for inference
     bijector_layers = [128] * 2
     bijector_npe = partial(AffineSigmoidCoupling,
                            layers=bijector_layers,

@@ -1,6 +1,3 @@
-#!/usr/bin/env python
-# coding: utf-8
-
 import logging
 
 logger = logging.getLogger()
@@ -34,21 +31,23 @@ import tensorflow_datasets as tfds
 import tensorflow as tf
 import haiku as hk
 import optax
-from haiku._src.nets.resnet import ResNet18
 from absl import app
 import numpy as np
 from absl import flags
 
-from sbi_lens.training.training_config import update_compressor_with_vmim, update, compressor_conf, estimator_conf
+from sbi_lens.training.training_config import compressor_conf, estimator_conf
 
 gpus = tf.config.experimental.list_physical_devices(device_type='GPU')
 for gpu in gpus:
     tf.config.experimental.set_memory_growth(gpu, True)
 
-flags.DEFINE_string("model_name",
-                    "LensingLogNormalDataset/toy_model_without_noise",
-                    "Configuration for the Lensing LogNormal dataset")
-flags.DEFINE_string("data_dir", 'tensorflow_dataset', "Input data folder")
+flags.DEFINE_string(
+    "model_name",
+    "LensingLogNormalDataset/toy_model_without_noise_score_density",
+    "Configuration for the Lensing LogNormal dataset")
+flags.DEFINE_string("data_dir",
+                    '/linkhome/rech/genmfd01/ulm75uc/tensorflow_datasets',
+                    "Input data folder")
 flags.DEFINE_float("map_size", 5., "Size of the lensing field in degrees")
 flags.DEFINE_integer("N", 128, "Number of pixels on the map.")
 flags.DEFINE_integer("gal_per_arcmin2", 30, "Number of galaxies per arcmin")
@@ -60,10 +59,10 @@ flags.DEFINE_boolean(
 
 flags.DEFINE_integer("batch_size_com", 128,
                      " Number of training examples in one forward pass")
-flags.DEFINE_integer("total_steps_com", 200000, "Number of iteration")
+flags.DEFINE_integer("total_steps_com", 2, "Number of iteration")
 
 flags.DEFINE_integer("score_weight", 0, "Score weight")
-flags.DEFINE_integer("total_steps_est", 50000, "Number of iteration")
+flags.DEFINE_integer("total_steps_est", 5, "Number of iteration")
 
 FLAGS = flags.FLAGS
 
@@ -87,7 +86,7 @@ def augmentation_with_noise(example):
     }
 
 
-def data_preprocessing(Augmentation_with_noise=False):
+def data_preprocessing(Augmentation_with_noise):
     ds = tfds.load(FLAGS.model_name, split='train', data_dir=FLAGS.data_dir)
     ds = ds.repeat()
     ds = ds.shuffle(1000)
@@ -100,16 +99,25 @@ def data_preprocessing(Augmentation_with_noise=False):
 
 
 def train_compressor(ds_train):
+    nf, compressor, parameters_compressor, opt_state_resnet = compressor_conf()
 
-    nf = compressor_conf()
-    params_nf = nf.init(jax.random.PRNGKey(8), 0.5 * jnp.ones([1, 2]),
-                        0.5 * jnp.ones([1, 2]))
-    compressor = hk.transform_with_state(lambda x: ResNet18(2)
-                                         (x, is_training=True))
-    parameters_resnet, opt_state_resnet = compressor.init(
-        jax.random.PRNGKey(873457568), 0.5 * jnp.ones([1, 128, 128, 1]))
-    parameters_compressor = hk.data_structures.merge(parameters_resnet,
-                                                     params_nf)
+    def loss_vmim(params, mu, batch, state_resnet):
+        y, opt_state_resnet = compressor.apply(
+            params, state_resnet, None, batch.reshape([-1, 128, 128, 1]))
+        log_prob = jax.vmap(lambda theta, x: nf.apply(
+            params, theta.reshape([1, 2]), x.reshape([1, 2])).squeeze())(mu, y)
+        return -jnp.mean(log_prob), opt_state_resnet
+
+    @jax.jit
+    def update_compressor_with_vmim(params, opt_state, mu, batch,
+                                    state_resnet):
+        """Single SGD update step."""
+        (loss, opt_state_resnet), grads = jax.value_and_grad(
+            loss_vmim, has_aux=True)(params, mu, batch, state_resnet)
+        updates, new_opt_state = optimizer_c.update(grads, opt_state)
+        new_params = optax.apply_updates(params, updates)
+        return loss, new_params, new_opt_state, opt_state_resnet
+
     lr_scheduler = optax.piecewise_constant_schedule(
         init_value=0.001,
         boundaries_and_scales={
@@ -130,19 +138,49 @@ def train_compressor(ds_train):
         sample = next(ds_train)
         l, parameters_compressor, opt_state_c, opt_state_resnet = update_compressor_with_vmim(
             parameters_compressor, opt_state_c, sample['theta'],
-            sample['simulation'], opt_state_resnet, optimizer_c)
+            sample['simulation'], opt_state_resnet)
         if batch % 100 == 0:
             batch_loss.append(l)
     return compressor, parameters_compressor, opt_state_resnet
 
 
-def train_estimator(ds_train, parameters_compressor, opt_state_resnet,
-                    sample_full_field, scale_theta, shift_theta):
+def train_estimator(ds_train, sample_full_field, scale_theta, shift_theta):
+
+    compressor, parameters_compressor, opt_state_resnet = train_compressor(
+        ds_train)
     nvp_nd, nvp_sample_nd = estimator_conf(scale_theta, shift_theta,
                                            sample_full_field)
     rng_seq = hk.PRNGSequence(1989)
     params_nd = nvp_nd.init(next(rng_seq), 0.5 * jnp.ones([1, 2]),
                             0.5 * jnp.ones([1, 2]))
+
+    def loss_fn(params, parameters_compressor, opt_state_resnet, weight, mu,
+                batch, score):
+
+        y, _ = compressor.apply(parameters_compressor, opt_state_resnet, None,
+                                batch.reshape([-1, 128, 128, 1]))
+
+        log_prob, out = jax.vmap(
+            jax.value_and_grad(lambda theta, x: nvp_nd.apply(
+                params, theta.reshape([1, 2]), x.reshape([1, 2])).squeeze()))(
+                    mu, y)
+
+        return -jnp.mean(log_prob) + weight * jnp.mean(
+            jnp.sum((out - score)**2, axis=1))
+
+    @jax.jit
+    def update(params, parameters_compressor, opt_state, opt_state_resnet,
+               weight, mu, batch, score):
+        """Single SGD update step."""
+        loss, grads = jax.value_and_grad(loss_fn)(params,
+                                                  parameters_compressor,
+                                                  opt_state_resnet, weight, mu,
+                                                  batch, score)
+        updates, new_opt_state = optimizer.update(grads, opt_state, params)
+        new_params = optax.apply_updates(params, updates)
+
+        return loss, new_params, new_opt_state
+
     # training
     lr_scheduler = optax.piecewise_constant_schedule(
         init_value=0.001,
@@ -160,28 +198,30 @@ def train_estimator(ds_train, parameters_compressor, opt_state_resnet,
         l, params_nd, opt_state = update(params_nd, parameters_compressor,
                                          opt_state, opt_state_resnet,
                                          FLAGS.score_weight, sample['theta'],
-                                         sample['simulation'], sample['score'],
-                                         optimizer)
+                                         sample['simulation'], sample['score'])
         if batch % 100 == 0:
-            batch_loss.append()
+            batch_loss.append(l)
 
-    return params_nd, nvp_sample_nd
+    return compressor, parameters_compressor, opt_state_resnet, params_nd
 
 
 def main(_):
     # plot resultst
-    ds_train = data_preprocessing()
+    ds_train = data_preprocessing(
+        Augmentation_with_noise=FLAGS.Augmentation_with_noise)
+    scale_theta = jnp.array([0.8183354, 0.8473379])
+    shift_theta = jnp.array([-0.53523827, -0.50171137])
     m_data = jnp.load(DATA_DIR / 'm_data_lensing.npy')
     sample_power_spectrum = np.load(DATA_DIR /
                                     'sample_power_spectrum_toy_model.npy')
     sample_full_field = np.load(DATA_DIR / 'sample_full_field.npy')
+    compressor, parameters_compressor, opt_state_resnet, params_nd = train_estimator(
+        ds_train, sample_full_field, scale_theta, shift_theta)
+    nvp_nd, nvp_sample_nd = estimator_conf(scale_theta, shift_theta,
+                                           sample_power_spectrum)
     rng_seq = hk.PRNGSequence(1989)
-    compressor, parameters_compressor, opt_state_resnet = train_compressor(
-        ds_train)
     y, _ = compressor.apply(parameters_compressor, opt_state_resnet, None,
                             m_data.reshape([1, 128, 128, 1]))
-    params_nd, nvp_sample_nd = train_estimator(ds_train, parameters_compressor,
-                                               opt_state_resnet)
     sample_nd = nvp_sample_nd.apply(params_nd,
                                     rng=next(rng_seq),
                                     x=y *

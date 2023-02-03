@@ -209,6 +209,11 @@ def get_reference_sample_posterior_power_spectrum(
           "{}N_{}ms_{}gpa_{}se".format(N, map_size, gals_per_arcmin2, sigma_e)
         )
 
+        m_data = np.load(
+          DATA_DIR / "m_data"
+          "{}N_{}ms_{}gpa_{}se".format(N, map_size, gals_per_arcmin2, sigma_e)
+        )
+
         return theta, m_data
 
 
@@ -292,6 +297,11 @@ def get_reference_sample_posterior_full_field(
 
         theta = np.load(
           DATA_DIR / "posterior_full_field__"
+          "{}N_{}ms_{}gpa_{}se".format(N, map_size, gals_per_arcmin2, sigma_e)
+        )
+
+        m_data = np.load(
+          DATA_DIR / "m_data"
           "{}N_{}ms_{}gpa_{}se".format(N, map_size, gals_per_arcmin2, sigma_e)
         )
 

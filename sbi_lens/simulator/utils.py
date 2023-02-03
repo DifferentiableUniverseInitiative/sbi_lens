@@ -109,7 +109,7 @@ def get_reference_sample_posterior_power_spectrum(
     Parameters
     ----------
     m_data : Array (N,N)
-        Lensing convergence map.
+        Lensing convergence map (only needed if run_mcmc=True)
     gals_per_arcmin2 : int
         Number of galaxies per arcmin
     sigma_e : float
@@ -235,7 +235,7 @@ def get_reference_sample_posterior_full_field(
     ----------
     model : numpyro model
     m_data : Array (N,N)
-        Lensing convergence map.
+        Lensing convergence map (only needed if run_mcmc=True)
     num_results : int
         Number of samples
     key : PRNG key

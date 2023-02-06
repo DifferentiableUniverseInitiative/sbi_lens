@@ -83,9 +83,13 @@ def get_samples_and_scores(
 
     # Sample theta from the model
     if thetas is None:
-        thetas = jax.vmap(
-          lambda k: trace(seed(model, k)).get_trace()['theta']['value']
+        omega_c = jax.vmap(
+          lambda k: trace(seed(model, k)).get_trace()['omega_c']['value']
         )(keys)
+        sigma_8 = jax.vmap(
+          lambda k: trace(seed(model, k)).get_trace()['sigma_8']['value']
+        )(keys)
+        thetas = jnp.stack([omega_c, sigma_8], axis=-1)
     res = jax.vmap(
       jax.value_and_grad(log_prob_fn, has_aux=True)
     )(thetas, keys)

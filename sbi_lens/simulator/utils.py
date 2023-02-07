@@ -98,39 +98,43 @@ def get_samples_and_scores(
 
 
 def get_reference_sample_posterior_power_spectrum(
-  m_data,
-  gals_per_arcmin2,
-  sigma_e,
-  num_results,
-  key,
-  run_mcmc=True,
-  N=None,
-  map_size=None,
+  run_mcmc=False,
+  N=128,
+  map_size=5,
+  gals_per_arcmin2=30,
+  sigma_e=0.2,
+  m_data=None,
+  num_results=None,
+  key=None,
 ):
 
     """ Posterior p(theta|x=m_data) from power spectrum analysis.
 
     Parameters
     ----------
-    m_data : Array (N,N)
-        Lensing convergence map (only needed if run_mcmc=True)
-    gals_per_arcmin2 : int
-        Number of galaxies per arcmin
-    sigma_e : float
-        Dispersion of the ellipticity distribution
-    num_results : int
-        Number of samples
-    key : PRNG key
     run_mcmc : bool, optional
-        if True the MCMC will be run.
-        if False pre samples chains are returned according to
+        if True the MCMC will be run,
+        if False pre sampled chains are returned according to
         gals_per_arcmin2, sigma_e, N, map_size,
-        by default True
+        by default False
     N : int, optional
-        Number of pixels on the map., by default None
+        Number of pixels on the map., by default 128
     map_size : int, optional
         The total angular size area is given by map_size x map_size,
-        by default None
+        by default 5
+    gals_per_arcmin2 : int
+        Number of galaxies per arcmin, by default 30
+    sigma_e : float
+        Dispersion of the ellipticity distribution, by default 0.2
+    m_data : Array (N,N)
+        Lensing convergence map (only needed if run_mcmc=True), by default None
+        if run_mcmc=True m_data can not be None
+    num_results : int
+        Number of samples (only needed if run_mcmc=True), by default None
+        if run_mcmc=True num_results can not be None
+    key : PRNG key
+        only needed if run_mcmc=True, by default None
+        if run_mcmc=True key can not be None
 
     Returns
     -------
@@ -210,53 +214,72 @@ def get_reference_sample_posterior_power_spectrum(
 
         theta = np.load(
           DATA_DIR / "posterior_power_spectrum__"
-          "{}N_{}ms_{}gpa_{}se".format(N, map_size, gals_per_arcmin2, sigma_e)
+          "{}N_{}ms_{}gpa_{}se.npy".format(
+            N,
+            map_size,
+            gals_per_arcmin2,
+            sigma_e
+          )
         )
 
         m_data = np.load(
-          DATA_DIR / "m_data"
-          "{}N_{}ms_{}gpa_{}se".format(N, map_size, gals_per_arcmin2, sigma_e)
+          DATA_DIR / "m_data__"
+          "{}N_{}ms_{}gpa_{}se.npy".format(
+            N,
+            map_size,
+            gals_per_arcmin2,
+            sigma_e
+          )
         )
 
-        return theta, m_data
+        truth = jnp.array([0.3, 0.8])
+        return theta, m_data, truth
 
 
 def get_reference_sample_posterior_full_field(
-  model,
-  m_data,
-  num_results,
-  key,
-  run_mcmc=True,
-  N=None,
-  map_size=None,
-  sigma_e=None,
-  gals_per_arcmin2=None
+  run_mcmc=False,
+  N=128,
+  map_size=5,
+  gals_per_arcmin2=30,
+  sigma_e=0.2,
+  model=None,
+  m_data=None,
+  num_results=None,
+  key=None,
 ):
 
     """ Full field posterior p(theta|x=m_data).
 
     Parameters
     ----------
-    model : numpyro model
-    m_data : Array (N,N)
-        Lensing convergence map (only needed if run_mcmc=True)
-    num_results : int
-        Number of samples
-    key : PRNG key
+
+
     run_mcmc : bool, optional
-        if True the MCMC will be run.
-        if False pre samples chains are returned according to
+        if True the MCMC will be run,
+        if False pre sampled chains are returned according to
         gals_per_arcmin2, sigma_e, N, map_size,
-        by default True
+        by default False
     N : int, optional
-        Number of pixels on the map., by default None
+        Number of pixels on the map., by default 128
     map_size : int, optional
         The total angular size area is given by map_size x map_size,
-        by default None
-    sigma_e : float, optional
-        Dispersion of the ellipticity distribution, by default None
-    gals_per_arcmin2 : int, optional
-        Number of galaxies per arcmin, by default None
+        by default 5
+    gals_per_arcmin2 : int
+        Number of galaxies per arcmin, by default 30
+    sigma_e : float
+        Dispersion of the ellipticity distribution, by default 0.2
+    model : numpyro model
+        only needed if run_mcmc=True, by default None
+        if run_mcmc=True model can not be None
+    m_data : Array (N,N)
+        Lensing convergence map (only needed if run_mcmc=True), by default None
+        if run_mcmc=True m_data can not be None
+    num_results : int
+        Number of samples (only needed if run_mcmc=True), by default None
+        if run_mcmc=True num_results can not be None
+    key : PRNG key
+        only needed if run_mcmc=True, by default None
+        if run_mcmc=True key can not be None
 
     Returns
     -------
@@ -301,12 +324,23 @@ def get_reference_sample_posterior_full_field(
 
         theta = np.load(
           DATA_DIR / "posterior_full_field__"
-          "{}N_{}ms_{}gpa_{}se".format(N, map_size, gals_per_arcmin2, sigma_e)
+          "{}N_{}ms_{}gpa_{}se.npy".format(
+            N,
+            map_size,
+            gals_per_arcmin2,
+            sigma_e
+          )
         )
 
         m_data = np.load(
-          DATA_DIR / "m_data"
-          "{}N_{}ms_{}gpa_{}se".format(N, map_size, gals_per_arcmin2, sigma_e)
+          DATA_DIR / "m_data__"
+          "{}N_{}ms_{}gpa_{}se.npy".format(
+            N,
+            map_size,
+            gals_per_arcmin2,
+            sigma_e
+          )
         )
 
-        return theta, m_data
+        truth = jnp.array([0.3, 0.8])
+        return theta, m_data, truth

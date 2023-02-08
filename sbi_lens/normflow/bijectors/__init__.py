@@ -1,2 +1,1 @@
-from sbi_lens.normflow.bijectors.implicit_inverse import make_inverse_fn
-from sbi_lens.normflow.bijectors.bijectors import MixtureAffineSigmoidBijector as MixtureAffineSigmoidBijector
+from sbi_lens.normflow.bijectors.bijectors import MixtureAffineSigmoidBijector

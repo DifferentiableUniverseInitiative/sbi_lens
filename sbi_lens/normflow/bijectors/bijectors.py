@@ -1,9 +1,11 @@
 import jax
 import jax.numpy as jnp
 from sbi_lens.normflow.bijectors.implicit_inverse import make_inverse_fn
+
 import tensorflow_probability as tfp
 
 tfp = tfp.substrates.jax
+
 tfd = tfp.distributions
 
 

@@ -13,7 +13,6 @@ Imports packages
 ``` python 
 %pylab inline
 import sbi_lens
-from chainconsumer import ChainConsumer
 from functools import partial 
 ```
 

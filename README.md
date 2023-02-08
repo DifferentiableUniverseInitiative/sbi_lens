@@ -11,21 +11,19 @@ pip install git+https://github.com/DifferentiableUniverseInitiative/sbi_lens.git
 Imports packages
 
 ``` python 
-%pylab inline
-import sbi_lens
 from functools import partial 
+import sbi_lens
+from sbi_lens.simulator.utils import (
+    get_reference_sample_posterior_full_field, 
+    get_reference_sample_posterior_power_spectrum
+)
+from sbi_lens.simulator import lensingLogNormal
 ```
 
 First, we create our fiducials. For this, we can create our observation from our true parameters and run MCMCs to get
 reference posteriors from both full field inference or power spectrum one.
 
 ``` python 
-from sbi_lens.simulator.utils import (
-    get_reference_sample_posterior_full_field, 
-    get_reference_sample_posterior_power_spectrum
-)
-from sbi_lens.simulator import lensingLogNormal
-
 # define lensing model
 model = partial(lensingLogNormal,  
                 N=128, 

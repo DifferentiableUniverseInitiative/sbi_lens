@@ -140,11 +140,9 @@ def lensingLogNormal(N=128,
 
     pix_area = (map_size * 60 / N)**2
     map_size = map_size / 180 * jnp.pi
-    theta = numpyro.sample(
-        'theta',
-        dist.Independent(
-            dist.Normal(jnp.array([0.3, 0.8]), 0.05 * jnp.ones(2)), 1))
-    cosmo = jc.Planck15(Omega_c=theta[0], sigma8=theta[1])
+    omega_c = numpyro.sample('omega_c', dist.Normal(0.3, 0.05))
+    sigma_8 = numpyro.sample('sigma_8', dist.Normal(0.8, 0.05))
+    cosmo = jc.Planck15(Omega_c=omega_c, sigma8=sigma_8)
     pz = jc.redshift.smail_nz(0.5, 2., 1.0)
     tracer = jc.probes.WeakLensing([pz])
     ell_tab = jnp.logspace(0, 4.5, 128)
@@ -158,7 +156,7 @@ def lensingLogNormal(N=128,
 
     power_map = make_power_map(P, N, map_size)
     if model_type == 'lognormal':
-        shift = shift_fn(cosmo.Omega_m, theta[1])
+        shift = shift_fn(cosmo.Omega_m, sigma_8)
         power_map = make_lognormal_power_map(power_map, shift)
     field = jnp.fft.ifft2(jnp.fft.fft2(z) * jnp.sqrt(power_map)).real
     if model_type == 'lognormal':

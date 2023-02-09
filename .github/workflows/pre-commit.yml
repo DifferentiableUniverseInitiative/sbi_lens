@@ -13,3 +13,6 @@ jobs:
      - uses:  pre-commit/action@v3.0.0
        with:
         extra_args: check-yaml --all-files
+     - uses:  pre-commit/action@v3.0.0
+       with:
+        extra_args: trailing-whitespacet --all-files

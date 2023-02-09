@@ -9,7 +9,7 @@ from tensorflow_datasets.core.utils import gcs_utils
 import jax
 from functools import partial
 from sbi_lens.simulator.LogNormal_field import lensingLogNormal
-from sbi_lens.gen_dataset.utils import get_samples_and_scores
+from sbi_lens.simulator.utils import get_samples_and_scores
 
 # disable internet connection
 gcs_utils.gcs_dataset_info_files = lambda *args, **kwargs: None

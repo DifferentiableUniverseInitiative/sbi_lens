@@ -65,3 +65,7 @@ def estimator_conf(scale_theta, shift_theta, sample):
     nvp_sample_nd = hk.transform(
         lambda x: SmoothNPE()(x).sample(len(sample), seed=hk.next_rng_key()))
     return nvp_nd, nvp_sample_nd
+
+
+
+

@@ -60,11 +60,9 @@ samples_ff = get_reference_sample_posterior_full_field(
     key=jax.random.PRNGKey(0)
 )
 ```
-
-
-<p>
-<img src="img/doc_observation.png" style="position:absolute;top:1500px;left:40px;width:320px;">
-<img src="img/doc_contour.png" style="position:relative;top:20px; left:550px;width:280px;">
+<p align=center>
+<img src="img/doc_observation.png" style="width:350px;">
+<img src="img/doc_contour.png" style="width:300px;">
 </p>
 
 Or we can directly load existing ones.

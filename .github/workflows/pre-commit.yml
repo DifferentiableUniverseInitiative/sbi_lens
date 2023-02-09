@@ -19,3 +19,7 @@ jobs:
      - uses:  pre-commit/action@v3.0.0
        with:
         extra_args: end-of-file-fixer --all-files
+     - name: YAPF Python Code Formatting Check
+       uses: AlexanderMelde/yapf-action@v1.0
+       with:
+          args: "--style=yapf"

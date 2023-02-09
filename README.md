@@ -8,7 +8,7 @@ pip install git+https://github.com/DifferentiableUniverseInitiative/sbi_lens.git
 
 # Usage
 
-Imports packages
+Imports packages.
 
 ``` python 
 from functools import partial 
@@ -20,8 +20,7 @@ from sbi_lens.simulator.utils import (
 from sbi_lens.simulator import lensingLogNormal
 ```
 
-First, we create our fiducials. For this, we can create our observation from our true parameters and run MCMCs to get
-reference posteriors from both full field inference or power spectrum one.
+First, we create our fiducials. For this, we define our [lensing model](https://github.com/DifferentiableUniverseInitiative/sbi_lens/blob/main/sbi_lens/simulator/LogNormal_field.py), condition it on our true parameters $\Omega_c$ and $\sigma_8$ and simulate a mass map. Then, we run MCMCs to get reference posteriors from both full field inference and power spectrum one.
 
 ``` python 
 # define lensing model
@@ -43,8 +42,6 @@ m_data = sample_map_fiducial()
 # run MCMCs
 samples_ps = get_reference_sample_posterior_power_spectrum(
     run_mcmc=True,
-    N=128,
-    map_size=5,
     gals_per_arcmin2=30,
     sigma_e=0.2,
     m_data=m_data, 
@@ -64,7 +61,13 @@ samples_ff = get_reference_sample_posterior_full_field(
 )
 ```
 
-Or directly load existing ones.
+
+<p>
+<img src="img/doc_observation.png" style="position:absolute;top:1500px;left:40px;width:320px;">
+<img src="img/doc_contour.png" style="position:relative;top:5px; left:430px;width:280px;">
+</p>
+
+Or we can directly load existing ones.
 
 ``` python 
 # load reference posteriors, observation m_data, and true parameters
@@ -82,7 +85,6 @@ samples_ff, _, _ = get_reference_sample_posterior_full_field(
     gals_per_arcmin2=30,
     sigma_e=0.2,
 )
-
 ```
 
 # Contributors

@@ -15,7 +15,7 @@ jobs:
         extra_args: check-yaml --all-files
      - uses:  pre-commit/action@v3.0.0
        with:
-        extra_args: trailing-whitespacet --all-files
+        extra_args: trailing-whitespace --all-files
      - uses:  pre-commit/action@v3.0.0
        with:
         extra_args: end-of-file-fixer --all-files

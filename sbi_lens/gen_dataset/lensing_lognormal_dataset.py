@@ -44,47 +44,47 @@ class LensingLogNormalDataset(tfds.core.GeneratorBasedBuilder):
   RELEASE_NOTES = {
       '0.0.1': 'Initial release.',
   }
-  BUILDER_CONFIGS = [LensingLogNormalDatasetConfig(name="toy_model_without_noise_score_density", 
-                                                   N=128, 
-                                                   map_size=5, 
-                                                   gal_per_arcmin2=30, 
+  BUILDER_CONFIGS = [LensingLogNormalDatasetConfig(name="toy_model_without_noise_score_density",
+                                                   N=128,
+                                                   map_size=5,
+                                                   gal_per_arcmin2=30,
                                                    sigma_e=0.2,
-                                                   model_type='lognormal', 
-                                                   proposal = False, 
-                                                   score_type = 'density', 
+                                                   model_type='lognormal',
+                                                   proposal = False,
+                                                   score_type = 'density',
                                                    with_noise = False),
-                    LensingLogNormalDatasetConfig(name="toy_model_with_noise_score_density", 
-                                                  N=128, 
-                                                  map_size=5, 
-                                                  gal_per_arcmin2=30, 
+                    LensingLogNormalDatasetConfig(name="toy_model_with_noise_score_density",
+                                                  N=128,
+                                                  map_size=5,
+                                                  gal_per_arcmin2=30,
                                                   sigma_e=0.2,
-                                                  model_type='lognormal', 
-                                                  proposal = False, 
-                                                  score_type = 'density', 
-                                                  with_noise = True),
-                    LensingLogNormalDatasetConfig(name="year_1_with_noise_score_density", 
-                                                  N=128, 
-                                                  map_size=5, 
-                                                  gal_per_arcmin2=10, 
-                                                  sigma_e=0.26,
-                                                  model_type='lognormal', 
-                                                  proposal = True, 
+                                                  model_type='lognormal',
+                                                  proposal = False,
                                                   score_type = 'density',
                                                   with_noise = True),
-                     LensingLogNormalDatasetConfig(name="year_10_with_noise_score_density", 
-                                                  N=128, 
-                                                  map_size=5, 
-                                                  gal_per_arcmin2=27, 
-                                                  sigma_e=0.26, 
-                                                  model_type='lognormal', 
-                                                  proposal = True, 
+                    LensingLogNormalDatasetConfig(name="year_1_with_noise_score_density",
+                                                  N=128,
+                                                  map_size=5,
+                                                  gal_per_arcmin2=10,
+                                                  sigma_e=0.26,
+                                                  model_type='lognormal',
+                                                  proposal = True,
+                                                  score_type = 'density',
+                                                  with_noise = True),
+                     LensingLogNormalDatasetConfig(name="year_10_with_noise_score_density",
+                                                  N=128,
+                                                  map_size=5,
+                                                  gal_per_arcmin2=27,
+                                                  sigma_e=0.26,
+                                                  model_type='lognormal',
+                                                  proposal = True,
                                                   score_type = 'density',
                                                   with_noise = True),
   ]
 
   def _info(self) -> tfds.core.DatasetInfo:
     """Returns the dataset metadata."""
-    
+
     return tfds.core.DatasetInfo(
           builder=self,
           description=_DESCRIPTION,
@@ -93,17 +93,17 @@ class LensingLogNormalDataset(tfds.core.GeneratorBasedBuilder):
               'theta': tfds.features.Tensor(shape=[2], dtype=tf.float32),
               'score': tfds.features.Tensor(shape=[2], dtype=tf.float32),
           }),
-          supervised_keys=None,  
+          supervised_keys=None,
           homepage='https://dataset-homepage/',
           citation=_CITATION,
       )
-    
+
 
   def _split_generators(self, dl_manager: tfds.download.DownloadManager):
     """Returns SplitGenerators."""
 
     return [
-        tfds.core.SplitGenerator(name=tfds.Split.TRAIN, 
+        tfds.core.SplitGenerator(name=tfds.Split.TRAIN,
                                  gen_kwargs={'size': 100000}),
 
     ]
@@ -111,33 +111,33 @@ class LensingLogNormalDataset(tfds.core.GeneratorBasedBuilder):
   def _generate_examples(self, size):
     """Yields examples."""
 
-    model = partial(lensingLogNormal, 
-                    self.builder_config.N, 
+    model = partial(lensingLogNormal,
+                    self.builder_config.N,
                     self.builder_config.map_size,
                     self.builder_config.gal_per_arcmin2,
                     self.builder_config.sigma_e,
-                    self.builder_config.model_type, 
+                    self.builder_config.model_type,
                     self.builder_config.with_noise)
 
-    @jax.jit 
+    @jax.jit
     def get_batch(key, thetas):
-        (_, samples), scores = get_samples_and_scores(model = model, 
-                                                key = key, 
-                                                batch_size = bs, 
+        (_, samples), scores = get_samples_and_scores(model = model,
+                                                key = key,
+                                                batch_size = bs,
                                                 score_type = self.builder_config.score_type,
-                                                thetas = thetas, 
-                                                with_noise = self.builder_config.with_noise) 
+                                                thetas = thetas,
+                                                with_noise = self.builder_config.with_noise)
 
         return samples['y'], samples['theta'], scores
 
     master_key = jax.random.PRNGKey(2948570986789)
 
     bs = 50
-    for i in range(size // bs):    
+    for i in range(size // bs):
       key, master_key = jax.random.split(master_key)
-      simu, theta, score = get_batch(key, None)  
+      simu, theta, score = get_batch(key, None)
 
-      for j in range(bs):                                  
+      for j in range(bs):
         yield '{}-{}'.format(i,j), {
               'simulation': simu[j],
               'theta': theta[j],

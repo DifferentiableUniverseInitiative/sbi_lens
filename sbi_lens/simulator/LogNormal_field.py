@@ -24,15 +24,15 @@ def shift_fn(omega_m, sigma_8):
   -----------
   omega_m: float
   The total matter density fraction.
-  
+
   sigma_8: float
   Variance of matter density perturbations at an 8 Mpc/h scale.
-  
+
   Returns
   -------
   lambda_shift: float
-  Interpolated shift parameters 
-  
+  Interpolated shift parameters
+
   """
     omega_m = jnp.atleast_1d(omega_m)
     sigma_8 = jnp.atleast_1d(sigma_8)
@@ -52,10 +52,10 @@ def make_power_map(pk_fn, N, map_size, zero_freq_val=0.0):
   -----------
   pk_fn:
    Given power spectrum
-  
+
   N: Int
    Number of grid-points on a side or number of wavenumbers to use.
-  
+
   map_size: Int
   The total angular size area is given by map_size x map_size
 
@@ -63,10 +63,10 @@ def make_power_map(pk_fn, N, map_size, zero_freq_val=0.0):
    The zero point to shift the vector
 
   Returns
-  -------  
+  -------
   power_map: Jax.DeviceArray (N,N)
   Image
-  
+
   """
     k = 2 * jnp.pi * jnp.fft.fftfreq(N, d=map_size / N)
     kcoords = jnp.meshgrid(k, k)
@@ -81,15 +81,15 @@ def make_lognormal_power_map(power_map, shift, zero_freq_val=0.0):
     """
   Calculate Log-Normal lensing fields with given Gaussian fields.
   -----------
-  power_map: Jax.DeviceArray 
+  power_map: Jax.DeviceArray
   Fourier-space Gaussian fields generated with a given power spectrum
-  
+
   shift: Float
   The shift parameter of the lognormal distribution with a given cosmology
-  
+
   zero_freq_val: float
   The zero point to shift the vector
-  
+
   Returns
   -------
   power_spectrum_for_lognorm: Jax.DeviceArray
@@ -121,17 +121,17 @@ def lensingLogNormal(N=128,
 
   gal_per_arcmin2: int
   Number of galaxies per arcmin
-  
+
 
   sigma_e : float
   Dispersion of the ellipticity distribution
 
   model_type: string
-  Physcal model adopted for the simulations 
-            
+  Physcal model adopted for the simulations
+
   with_noise : boolean
   If True Gaussian noise will be added to the lensing map
-            
+
   Returns
   -------
   x: Jax.DeviceArray (N,N)

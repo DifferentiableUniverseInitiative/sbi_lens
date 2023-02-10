@@ -14,7 +14,7 @@ def root_bisection(f, params):
   """
   f: optimality fn with input arg (params, x)
   """
-  bisec = Bisection(optimality_fun=f, lower=0.0, upper=1., 
+  bisec = Bisection(optimality_fun=f, lower=0.0, upper=1.,
                     check_bracket=False, maxiter=100, tol=1e-06)
   return bisec.run(None, params).params
 

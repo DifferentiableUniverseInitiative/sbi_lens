@@ -1,5 +1,6 @@
 from pathlib import Path
 import numpy as np
+import jax
 import jax.numpy as jnp
 import jax_cosmo as jc
 import numpyro
@@ -18,6 +19,7 @@ lognormal_params = np.loadtxt(DATA_DIR / "lognormal_shift.csv",
                               delimiter=',').reshape([8, 8, 3])
 
 
+@jax.jit
 def shift_fn(omega_m, sigma_8):
     """
   Compute the interpolated shift parameters of the lognormal distribution as function of cosmology

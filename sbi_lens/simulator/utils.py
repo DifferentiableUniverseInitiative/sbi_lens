@@ -139,8 +139,8 @@ def get_reference_sample_posterior_power_spectrum(
     cosmo = jc.Planck15(Omega_c=0.3, sigma8=0.8)
     pz = jc.redshift.smail_nz(0.5, 2., 1.0, gals_per_arcmin2=gals_per_arcmin2)
     tracer = jc.probes.WeakLensing([pz], sigma_e=sigma_e)
-    f_sky = 5**2 / 41_253
-    kmap_lt = lt.ConvergenceMap(m_data, 5 * u.deg)
+    f_sky = map_size**2 / 41_253
+    kmap_lt = lt.ConvergenceMap(m_data, map_size * u.deg)
     l_edges = np.arange(100.0, 5000.0, 50.0)
     l2, Pl2 = kmap_lt.powerSpectrum(l_edges)
     cell_noise = jc.angular_cl.noise_cl(l2, [tracer])[0]

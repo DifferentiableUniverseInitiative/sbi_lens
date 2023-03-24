@@ -6,6 +6,7 @@ import jax_cosmo as jc
 import numpyro
 import numpyro.distributions as dist
 from jax.scipy.ndimage import map_coordinates
+import h5py
 
 __all__ = ['lensingLogNormal']
 
@@ -17,6 +18,15 @@ DATA_DIR = ROOT_DIR / "data"
 lognormal_params = np.loadtxt(DATA_DIR / "lognormal_shift.csv",
                               skiprows=1,
                               delimiter=',').reshape([8, 8, 3])
+
+with h5py.File(DATA_DIR / "shear_photoz_stack.hdf5") as f:
+  group = f["n_of_z"]
+  source = group["source"]
+  z_shear = source['z'][::]
+  nz_shear = [
+      jc.redshift.kde_nz(z_shear, source[f"bin_{i}"][:], bw=0.01, zmax=2.5)
+      for i in range(5)
+  ]
 
 
 @jax.jit
@@ -48,7 +58,7 @@ def shift_fn(omega_m, sigma_8):
   return lambda_shift
 
 
-def make_power_map(pk_fn, N, map_size, zero_freq_val=0.0):
+def make_power_map(pk_fn, N, map_size, zero_freq_val=0.0, model_type=None):
   """
   Calculate fourier-space Gaussian fields generated with a given power spectrum.
   -----------
@@ -63,6 +73,10 @@ def make_power_map(pk_fn, N, map_size, zero_freq_val=0.0):
 
   zero_freq_val: float
    The zero point to shift the vector
+
+  model_type: optional
+    If ``sample_correlated``, the power map will be computed from the Cholesky decomposition of the covariance matrix.
+    Default is ``None``.
 
   Returns
   -------
@@ -81,7 +95,7 @@ def make_power_map(pk_fn, N, map_size, zero_freq_val=0.0):
 
 def make_lognormal_power_map(power_map, shift, zero_freq_val=0.0):
   """
-  Calculate Log-Normal lensing fields with given Gaussian fields.
+  Calculate Log-Normal lensing fields from a given Gaussian fields.
   -----------
   power_map: Jax.DeviceArray
   Fourier-space Gaussian fields generated with a given power spectrum
@@ -106,34 +120,28 @@ def make_lognormal_power_map(power_map, shift, zero_freq_val=0.0):
   return power_spectrum_for_lognorm
 
 
-def lensingLogNormal(N=128,
+def lensingLogNormal(pz=nz_shear,
+                     N=128,
                      map_size=5,
                      gal_per_arcmin2=10,
                      sigma_e=0.26,
-                     model_type='lognormal',
-                     with_noise=True):
+                     model_type=None,
+                     with_noise=False):
   """
   Calculate Log-Normal lensing convergence map.
   -----------
   N: int
   Number of pixels on the map.
-
   map_size: int
   The total angular size area is given by map_size x map_size
-
   gal_per_arcmin2: int
   Number of galaxies per arcmin
-
-
   sigma_e : float
   Dispersion of the ellipticity distribution
-
   model_type: string
   Physcal model adopted for the simulations
-
   with_noise : boolean
   If True Gaussian noise will be added to the lensing map
-
   Returns
   -------
   x: Jax.DeviceArray (N,N)
@@ -145,25 +153,41 @@ def lensingLogNormal(N=128,
   omega_c = numpyro.sample('omega_c', dist.Normal(0.3, 0.05))
   sigma_8 = numpyro.sample('sigma_8', dist.Normal(0.8, 0.05))
   cosmo = jc.Planck15(Omega_c=omega_c, sigma8=sigma_8)
-  pz = jc.redshift.smail_nz(0.5, 2., 1.0)
-  tracer = jc.probes.WeakLensing([pz])
-  ell_tab = jnp.logspace(0, 4.5, 128)
-  cell_tab = jc.angular_cl.angular_cl(cosmo, ell_tab, [tracer])[0]
-  P = lambda k: jc.scipy.interpolate.interp(k.flatten(), ell_tab, cell_tab
-                                            ).reshape(k.shape)
+  ell_tab = 2 * jnp.pi * abs(jnp.fft.fftfreq(2 * N, d=map_size / (2 * N)))
+  n_nz_bins = len(pz)
+  tracer = jc.probes.WeakLensing(pz)
+  cell_tab = jc.angular_cl.angular_cl(cosmo, ell_tab, [tracer])
+  power = []
+  for cl in cell_tab:
+    P = lambda k: jc.scipy.interpolate.interp(k.flatten(), ell_tab, cl
+                                              ).reshape(k.shape)
+    power_map = make_power_map(P, N, map_size)
+    if model_type == 'lognormal':
+      shift = shift_fn(cosmo.Omega_m, sigma_8)
+      power_map = make_lognormal_power_map(power_map, shift)
+    power.append(power_map)
+  power = jnp.stack(power, axis=-1)
+
+  @jax.vmap
+  def fill_cov_mat(m):
+    idx = np.triu_indices(n_nz_bins)
+    cov_mat = jnp.zeros((n_nz_bins, n_nz_bins)).at[idx].set(m).T.at[idx].set(m)
+    return cov_mat
+
+  cov_mat = fill_cov_mat(power.reshape(-1, len(cell_tab)))
+  L = jnp.linalg.cholesky(cov_mat)
+  L = L.reshape([N, N, n_nz_bins, n_nz_bins])
+  L = L.at[0, 0].set(jnp.zeros((n_nz_bins, n_nz_bins)))
+  L = L.transpose([2, 3, 0, 1])
   z = numpyro.sample(
       'z',
-      dist.MultivariateNormal(loc=jnp.zeros((N, N)),
+      dist.MultivariateNormal(loc=jnp.zeros((n_nz_bins, N, N)),
                               precision_matrix=jnp.eye(N)))
-
-  power_map = make_power_map(P, N, map_size)
+  field = (jnp.fft.fft2(z) * L)
+  field = (jnp.fft.ifft2(jnp.sum(field, axis=1)).real)
   if model_type == 'lognormal':
-    shift = shift_fn(cosmo.Omega_m, sigma_8)
-    power_map = make_lognormal_power_map(power_map, shift)
-  field = jnp.fft.ifft2(jnp.fft.fft2(z) * jnp.sqrt(power_map)).real
-  if model_type == 'lognormal':
-    field = shift * (jnp.exp(field - jnp.var(field) / 2) - 1)
-
+    field = shift * (
+        jnp.exp(field - jnp.var(field, axis=(1, 2), keepdims=True) / 2) - 1)
   if with_noise == True:
     x = numpyro.sample(
         'y',

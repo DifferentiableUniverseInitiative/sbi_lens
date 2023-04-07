@@ -9,9 +9,16 @@ import jax_cosmo as jc
 import lenstools as lt
 import astropy.units as u
 import tensorflow_probability as tfp
+import h5py
+import itertools
 
 tfp = tfp.substrates.jax
 tfd = tfp.distributions
+
+SOURCE_FILE = Path(__file__)
+SOURCE_DIR = SOURCE_FILE.parent
+ROOT_DIR = SOURCE_DIR.parent.resolve()
+DATA_DIR = ROOT_DIR / "data"
 
 
 def get_samples_and_scores(
@@ -91,6 +98,8 @@ def get_samples_and_scores(
 
 
 def get_reference_sample_posterior_power_spectrum(
+    Omega_c=0.3,
+    sigma8=0.8,
     run_mcmc=False,
     N=128,
     map_size=5,
@@ -104,6 +113,10 @@ def get_reference_sample_posterior_power_spectrum(
 
     Parameters
     ----------
+    Omega_c: float
+        Fiducial value of the cold matter density fraction.
+    sigma8: float
+        Fiducial value of the variance of matter density perturbations at an 8 Mpc/h scale.
     run_mcmc : bool, optional
         if True the MCMC will be run,
         if False pre sampled chains are returned according to
@@ -118,6 +131,8 @@ def get_reference_sample_posterior_power_spectrum(
         Number of galaxies per arcmin, by default 30
     sigma_e : float
         Dispersion of the ellipticity distribution, by default 0.2
+    n_bins:Int
+        Number of redshift bins
     m_data : Array (N,N)
         Lensing convergence map (only needed if run_mcmc=True), by default None
         if run_mcmc=True m_data can not be None
@@ -136,29 +151,37 @@ def get_reference_sample_posterior_power_spectrum(
 
   if run_mcmc:
 
-    cosmo = jc.Planck15(Omega_c=0.3, sigma8=0.8)
-    pz = jc.redshift.smail_nz(0.5, 2., 1.0, gals_per_arcmin2=gals_per_arcmin2)
-    tracer = jc.probes.WeakLensing([pz], sigma_e=sigma_e)
-    f_sky = 5**2 / 41_253
-    kmap_lt = lt.ConvergenceMap(m_data, 5 * u.deg)
+    cosmo = jc.Planck15(Omega_c=Omega_c, sigma8=sigma8)
+    tracer = jc.probes.WeakLensing(nz_shear, sigma_e=sigma_e)
+    f_sky = map_size**2 / 41_253
     l_edges = np.arange(100.0, 5000.0, 50.0)
-    l2, Pl2 = kmap_lt.powerSpectrum(l_edges)
-    cell_noise = jc.angular_cl.noise_cl(l2, [tracer])[0]
+    l2 = lt.ConvergenceMap(m_data[0],
+                           map_size * u.deg).powerSpectrum(l_edges)[0]
+    pl_array = []
+    for i, j in itertools.combinations_with_replacement(
+        range(len(nz_shear)), 2):
+      pi = lt.ConvergenceMap(m_data[i], angle=map_size * u.deg).cross(
+          lt.ConvergenceMap(m_data[j], angle=map_size * u.deg),
+          l_edges=l_edges)[1]
+      pl_array.append(pi)
+    Pl2 = np.stack(pl_array)
+    cell_noise = jc.angular_cl.noise_cl(l2, [tracer])
     _, C = jc.angular_cl.gaussian_cl_covariance_and_mean(cosmo,
                                                          l2, [tracer],
-                                                         f_sky=f_sky)
+                                                         f_sky=f_sky,
+                                                         sparse=True)
 
     @jax.jit
     @jax.vmap
     def log_prob_fn(params):
-      cosmo = jc.Planck15(Omega_c=params[0] * 0.05 + 0.3,
-                          sigma8=params[1] * 0.05 + 0.8)
-      cell = jc.angular_cl.angular_cl(cosmo, l2, [tracer])[0]
+      cosmo = jc.Planck15(Omega_c=params[0] * 0.05 + Omega_c,
+                          sigma8=params[1] * 0.05 + sigma8)
+      cell = jc.angular_cl.angular_cl(cosmo, l2, [tracer])
       prior = tfd.MultivariateNormalDiag(loc=jnp.zeros(2),
                                          scale_identity_multiplier=1.)
-      likelihood = tfd.MultivariateNormalDiag(cell,
-                                              scale_diag=jnp.sqrt(np.diag(C)))
-      logp = prior.log_prob(params) + likelihood.log_prob(Pl2 - cell_noise)
+      likelihood_log_prob = jc.likelihood.gaussian_log_likelihood(
+          Pl2 - cell_noise, cell, C, include_logdet=False)
+      logp = prior.log_prob(params) + likelihood_log_prob
       return logp
 
     # Initialize the HMC transition kernel.
@@ -180,10 +203,7 @@ def get_reference_sample_posterior_power_spectrum(
         trace_fn=lambda _, pkr: pkr.inner_results.is_accepted,
         seed=key)
 
-    theta = samples[is_accepted] * 0.05 + jnp.array([0.3, 0.8])
-    inds = np.random.randint(0, int(num_results), len(theta))
-    theta = theta[inds]
-
+    theta = samples[is_accepted] * 0.05 + jnp.array([Omega_c, sigma8])
     return theta
 
   else:
@@ -205,6 +225,8 @@ def get_reference_sample_posterior_power_spectrum(
 
 
 def get_reference_sample_posterior_full_field(
+    Omega_c=0.3,
+    sigma8=0.8,
     run_mcmc=False,
     N=128,
     map_size=5,
@@ -219,8 +241,10 @@ def get_reference_sample_posterior_full_field(
 
     Parameters
     ----------
-
-
+    Omega_c: float
+        Fiducial value of the cold matter density fraction.
+    sigma8: float
+        Fiducial value of the variance of matter density perturbations at an 8 Mpc/h scale.
     run_mcmc : bool, optional
         if True the MCMC will be run,
         if False pre sampled chains are returned according to
@@ -275,6 +299,7 @@ def get_reference_sample_posterior_full_field(
                               num_warmup=100,
                               num_samples=num_results,
                               progress_bar=True)
+
     mcmc.run(key)
     samples = mcmc.get_samples()
 
@@ -294,5 +319,5 @@ def get_reference_sample_posterior_full_field(
                      "{}N_{}ms_{}gpa_{}se.npy".format(
                          N, map_size, gals_per_arcmin2, sigma_e))
 
-    truth = jnp.array([0.3, 0.8])
+    truth = jnp.array([Omega_c, sigma8])
     return theta, m_data, truth

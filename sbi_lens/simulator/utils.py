@@ -150,7 +150,6 @@ def get_reference_sample_posterior_power_spectrum(
     """
 
   if run_mcmc:
-
     cosmo = jc.Planck15(Omega_c=Omega_c, sigma8=sigma8)
     tracer = jc.probes.WeakLensing(nz_shear, sigma_e=sigma_e)
     f_sky = map_size**2 / 41_253

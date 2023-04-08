@@ -9,8 +9,8 @@ import jax_cosmo as jc
 import lenstools as lt
 import astropy.units as u
 import tensorflow_probability as tfp
-import h5py
 import itertools
+from sbi_lens.simulator.redshift import subdivide
 
 tfp = tfp.substrates.jax
 tfd = tfp.distributions
@@ -98,13 +98,21 @@ def get_samples_and_scores(
 
 
 def get_reference_sample_posterior_power_spectrum(
-    Omega_c=0.3,
-    sigma8=0.8,
+    Omega_c=[0.2664, 0.2],
+    Omega_b=[0.0492, 0.006],
+    sigma8=[0.831, 0.14],
+    h0=[0.6727, 0.063],
+    ns=[0.9645, 0.08],
+    w0=[-1.0, 0.8],
     run_mcmc=False,
-    N=128,
-    map_size=5,
-    gals_per_arcmin2=30,
-    sigma_e=0.2,
+    N=256,
+    map_size=10,
+    gals_per_arcmin2=27,
+    sigma_e=0.26,
+    nbins=5,
+    a=2,
+    b=0.68,
+    z0=0.11,
     m_data=None,
     num_results=None,
     key=None,
@@ -113,10 +121,20 @@ def get_reference_sample_posterior_power_spectrum(
 
     Parameters
     ----------
-    Omega_c: float
-        Fiducial value of the cold matter density fraction.
-    sigma8: float
-        Fiducial value of the variance of matter density perturbations at an 8 Mpc/h scale.
+    Omega_c: [float, float]
+        Fiducial and prior value of the cold matter density fraction.
+    Omega_b: [float, float]
+        Fiducial and prior value of the  baryonic matter density fraction.
+    sigma8: [float, float]
+        Fiducial and prior value of the variance of matter density perturbations at an 8 Mpc/h scale.
+    h: [float, float]
+      Fiducial and prior value of the Hubble constant divided by 100 km/s/Mpc; unitless.
+    ns:[float, float]
+    Fiducial and prior value of the primordial scalar perturbation spectral
+        index.
+    w0:[float, float]
+        Fiducial and prior value of the first order term of dark energy equation.
+
     run_mcmc : bool, optional
         if True the MCMC will be run,
         if False pre sampled chains are returned according to
@@ -150,16 +168,21 @@ def get_reference_sample_posterior_power_spectrum(
     """
 
   if run_mcmc:
-
-    cosmo = jc.Planck15(Omega_c=Omega_c, sigma8=sigma8)
-    tracer = jc.probes.WeakLensing(nz_shear, sigma_e=sigma_e)
+    cosmo = jc.Planck15(Omega_c=Omega_c,
+                        Omega_b=Omega_b,
+                        sigma8=sigma8,
+                        h=h0,
+                        n_s=ns,
+                        w0=w0)
+    nz = jc.redshift.smail_nz(a, b, z0, gals_per_arcmin2=gals_per_arcmin2)
+    nz_bins = subdivide(nz, nbins=nbins)
+    tracer = jc.probes.WeakLensing(nz_bins, sigma_e=sigma_e)
     f_sky = map_size**2 / 41_253
     l_edges = np.arange(100.0, 5000.0, 50.0)
     l2 = lt.ConvergenceMap(m_data[0],
                            map_size * u.deg).powerSpectrum(l_edges)[0]
     pl_array = []
-    for i, j in itertools.combinations_with_replacement(
-        range(len(nz_shear)), 2):
+    for i, j in itertools.combinations_with_replacement(range(nbins), 2):
       pi = lt.ConvergenceMap(m_data[i], angle=map_size * u.deg).cross(
           lt.ConvergenceMap(m_data[j], angle=map_size * u.deg),
           l_edges=l_edges)[1]
@@ -174,8 +197,14 @@ def get_reference_sample_posterior_power_spectrum(
     @jax.jit
     @jax.vmap
     def log_prob_fn(params):
-      cosmo = jc.Planck15(Omega_c=params[0] * 0.05 + Omega_c,
-                          sigma8=params[1] * 0.05 + sigma8)
+      cosmo = jc.Planck15(
+          Omega_c=params[0] * Omega_c[1] + Omega_c[0],
+          Omega_b=params[1] * Omega_b[1] + Omega_b[0],
+          sigma8=params[2] * sigma8[1] + sigma8[0],
+          h=params[3] * h0[1] + h0[0],
+          n_s=params[4] * ns[1] + ns[0],
+          w0=params[5] * w0[1] + w0[0],
+      )
       cell = jc.angular_cl.angular_cl(cosmo, l2, [tracer])
       prior = tfd.MultivariateNormalDiag(loc=jnp.zeros(2),
                                          scale_identity_multiplier=1.)
@@ -203,7 +232,9 @@ def get_reference_sample_posterior_power_spectrum(
         trace_fn=lambda _, pkr: pkr.inner_results.is_accepted,
         seed=key)
 
-    theta = samples[is_accepted] * 0.05 + jnp.array([Omega_c, sigma8])
+    theta = samples[is_accepted] * jnp.array(
+        [Omega_c, Omega_b, sigma8, h0, ns, w0])[:, 0] + jnp.array(
+            [Omega_c, Omega_b, sigma8, h0, ns, w0])[:, 1]
     return theta
 
   else:
@@ -220,18 +251,22 @@ def get_reference_sample_posterior_power_spectrum(
                      "{}N_{}ms_{}gpa_{}se.npy".format(
                          N, map_size, gals_per_arcmin2, sigma_e))
 
-    truth = jnp.array([0.3, 0.8])
+    truth = jnp.array([Omega_c, Omega_b, sigma8, h0, ns, w0])[:, 0]
     return theta, m_data, truth
 
 
 def get_reference_sample_posterior_full_field(
-    Omega_c=0.3,
-    sigma8=0.8,
+    Omega_c=0.2664,
+    Omega_b=0.0492,
+    sigma8=0.83,
+    h0=0.6727,
+    ns=0.9645,
+    w0=-1.0,
     run_mcmc=False,
-    N=128,
-    map_size=5,
-    gals_per_arcmin2=30,
-    sigma_e=0.2,
+    N=256,
+    map_size=10,
+    gals_per_arcmin2=27,
+    sigma_e=0.26,
     model=None,
     m_data=None,
     num_results=None,
@@ -245,6 +280,19 @@ def get_reference_sample_posterior_full_field(
         Fiducial value of the cold matter density fraction.
     sigma8: float
         Fiducial value of the variance of matter density perturbations at an 8 Mpc/h scale.
+    Omega_c: float
+        Fiducial value of the cold matter density fraction.
+    Omega_b: float
+        Fiducial value of the  baryonic matter density fraction.
+    sigma8: float
+        Fiducial value of the variance of matter density perturbations at an 8 Mpc/h scale.
+    h: float
+      Fiducial value of the Hubble constant divided by 100 km/s/Mpc; unitless.
+    ns: float
+    Fiducial value of the primordial scalar perturbation spectral
+        index.
+    w0:[float, float]
+        Fiducial value of the first order term of dark energy equation.
     run_mcmc : bool, optional
         if True the MCMC will be run,
         if False pre sampled chains are returned according to
@@ -283,7 +331,15 @@ def get_reference_sample_posterior_full_field(
     def config(x):
       if x['name'] == 'omega_c' and ('decentered' not in x['name']):
         return LocScaleReparam(centered=0)
+      elif x['name'] == 'omega_b' and ('decentered' not in x['name']):
+        return LocScaleReparam(centered=0)
       elif x['name'] == 'sigma_8' and ('decentered' not in x['name']):
+        return LocScaleReparam(centered=0)
+      elif x['name'] == 'h_0' and ('decentered' not in x['name']):
+        return LocScaleReparam(centered=0)
+      elif x['name'] == 'n_s' and ('decentered' not in x['name']):
+        return LocScaleReparam(centered=0)
+      elif x['name'] == 'w_0' and ('decentered' not in x['name']):
         return LocScaleReparam(centered=0)
       else:
         return None
@@ -303,7 +359,15 @@ def get_reference_sample_posterior_full_field(
     mcmc.run(key)
     samples = mcmc.get_samples()
 
-    return jnp.stack([samples['omega_c'], samples['sigma_8']], axis=-1)
+    return jnp.stack([
+        samples['omega_c'],
+        samples['omega_b'],
+        samples['sigma_8'],
+        samples['h_0'],
+        samples['n_s'],
+        samples['w_0'],
+    ],
+                     axis=-1)
 
   else:
     SOURCE_FILE = Path(__file__)
@@ -319,5 +383,5 @@ def get_reference_sample_posterior_full_field(
                      "{}N_{}ms_{}gpa_{}se.npy".format(
                          N, map_size, gals_per_arcmin2, sigma_e))
 
-    truth = jnp.array([Omega_c, sigma8])
+    truth = jnp.array([Omega_c, Omega_b, sigma8, h0, ns, w0])
     return theta, m_data, truth

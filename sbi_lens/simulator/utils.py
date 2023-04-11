@@ -19,6 +19,13 @@ SOURCE_FILE = Path(__file__)
 SOURCE_DIR = SOURCE_FILE.parent
 ROOT_DIR = SOURCE_DIR.parent.resolve()
 DATA_DIR = ROOT_DIR / "data"
+a = 2
+b = 0.68
+z0 = 0.11
+nbins = 5
+nz = jc.redshift.smail_nz(a, b, z0, gals_per_arcmin2=27)
+nz_bins = subdivide(nz, nbins=nbins)
+tracer = jc.probes.WeakLensing(nz_bins, sigma_e=0.26)
 
 
 def get_samples_and_scores(
@@ -168,15 +175,15 @@ def get_reference_sample_posterior_power_spectrum(
     """
 
   if run_mcmc:
-    cosmo = jc.Planck15(Omega_c=Omega_c,
-                        Omega_b=Omega_b,
-                        sigma8=sigma8,
-                        h=h0,
-                        n_s=ns,
-                        w0=w0)
-    nz = jc.redshift.smail_nz(a, b, z0, gals_per_arcmin2=gals_per_arcmin2)
-    nz_bins = subdivide(nz, nbins=nbins)
-    tracer = jc.probes.WeakLensing(nz_bins, sigma_e=sigma_e)
+    cosmo = jc.Planck15(Omega_c=Omega_c[0],
+                        Omega_b=Omega_b[0],
+                        sigma8=sigma8[0],
+                        h=h0[0],
+                        n_s=ns[0],
+                        w0=w0[0])
+    # nz = jc.redshift.smail_nz(a, b, z0, gals_per_arcmin2=gals_per_arcmin2)
+    # nz_bins = subdivide(nz, nbins=nbins)
+    # tracer = jc.probes.WeakLensing(nz_bins, sigma_e=sigma_e)
     f_sky = map_size**2 / 41_253
     l_edges = np.arange(100.0, 5000.0, 50.0)
     l2 = lt.ConvergenceMap(m_data[0],
@@ -206,7 +213,7 @@ def get_reference_sample_posterior_power_spectrum(
           w0=params[5] * w0[1] + w0[0],
       )
       cell = jc.angular_cl.angular_cl(cosmo, l2, [tracer])
-      prior = tfd.MultivariateNormalDiag(loc=jnp.zeros(2),
+      prior = tfd.MultivariateNormalDiag(loc=jnp.zeros(6),
                                          scale_identity_multiplier=1.)
       likelihood_log_prob = jc.likelihood.gaussian_log_likelihood(
           Pl2 - cell_noise, cell, C, include_logdet=False)
@@ -227,7 +234,7 @@ def get_reference_sample_posterior_power_spectrum(
     samples, is_accepted = tfp.mcmc.sample_chain(
         num_results=num_results,
         num_burnin_steps=num_burnin_steps,
-        current_state=np.random.randn(nb_parallel, 2),
+        current_state=np.random.randn(nb_parallel, 6),
         kernel=adaptive_hmc,
         trace_fn=lambda _, pkr: pkr.inner_results.is_accepted,
         seed=key)

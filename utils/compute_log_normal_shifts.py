@@ -19,7 +19,6 @@ flags.DEFINE_float("h", 0.6727, "h")
 flags.DEFINE_float("ns", 0.9645, "ns")
 flags.DEFINE_float("wa", 0.0, "wa")
 
-
 flags.DEFINE_float("pixel_size", 2.34, "pixel scale in arcmin")
 
 # Parameters for redshift distribution
@@ -66,7 +65,7 @@ def fn(params):
     # Converting from pixel size to scale used in cosmomentum, following Boruah et al. 2021
     theta_in_arcmin = FLAGS.pixel_size / np.sqrt(np.pi)
 
-    return return_lognormal_shift_for_individual_FLASK_bin(theta_in_arcmin, 0, 0)
+    return omega_m, sigma8, w0, bin_id, return_lognormal_shift_for_individual_FLASK_bin(theta_in_arcmin, 0, 0)
 
 
 def main(_):
@@ -93,19 +92,16 @@ def main(_):
     grid = np.stack(np.meshgrid(om, s8, w, bin_id), axis=-1).reshape([-1, 4])
 
     # Start multiprocessing the grid
-    pool = Pool()
+    pool = Pool(maxtasksperchild=1)
     print('Starting the computation')
-    results = pool.map(fn, grid)
+    results = pool.map(fn, grid, chunksize=1)
     print('Done')
+    pool.close()
 
     # Saving the results
-    results = np.concatenate([grid, np.array(results).reshape([-1,1])], axis=-1)
-    results = results.reshape([FLAGS.nsteps,FLAGS.nsteps,FLAGS.nsteps,FLAGS.nbins, 5])
-
+    results = np.array(results).reshape([FLAGS.nsteps,FLAGS.nsteps,FLAGS.nsteps,FLAGS.nbins, 5])
+    
     np.save('outputs/lognormal_shifts_om_s8_w_bin.npy', results)
-
 
 if __name__ == "__main__":
     app.run(main)
-                   
-                  

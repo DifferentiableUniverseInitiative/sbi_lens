@@ -1,0 +1,3 @@
+[submodule "third_party/CosMomentum"]
+	path = third_party/CosMomentum
+	url = https://github.com/OliverFHD/CosMomentum.git

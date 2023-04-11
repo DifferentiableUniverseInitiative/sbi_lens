@@ -176,12 +176,12 @@ def lensingLogNormal(
 
   pix_area = (map_size * 60 / N)**2
   map_size = map_size / 180 * jnp.pi
-  omega_c = numpyro.sample('omega_c', dist.Normal(0.2664, 0.2))
+  omega_c = numpyro.sample('omega_c',  dist.TruncatedNormal(0.2664, 0.2, low=0))
   omega_b = numpyro.sample('omega_b', dist.Normal(0.0492, 0.006))
   sigma_8 = numpyro.sample('sigma_8', dist.Normal(0.831, 0.14))
   h_0 = numpyro.sample('h_0', dist.Normal(0.6727, 0.063))
   n_s = numpyro.sample('n_s', dist.Normal(0.9645, 0.08))
-  w_0 = numpyro.sample('w_0', dist.TruncatedNormal(-1.0, 0.9, low=0))
+  w_0 = numpyro.sample('w_0', dist.Normal(-1.0, 0.9))
   cosmo = jc.Planck15(Omega_c=omega_c,
                       Omega_b=omega_b,
                       h=h_0,

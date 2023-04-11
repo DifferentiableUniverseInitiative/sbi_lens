@@ -40,7 +40,7 @@ def shift_fn(params, theta):
                                   for j in range(ntheta)],
                                 axis=0).reshape([ntheta, -1]),
                       order=1,
-                      mode='nearest').squeeze() for i in range(params.shape[-2])
+                      mode='nearest').squeeze() for i in range(nbins)
   ]
   return jnp.stack(shift)
 
@@ -174,7 +174,7 @@ def lensingLogNormal(
   sigma_8 = numpyro.sample('sigma_8', dist.Normal(0.831, 0.14))
   h_0 = numpyro.sample('h_0', dist.Normal(0.6727, 0.063))
   n_s = numpyro.sample('n_s', dist.Normal(0.9645, 0.08))
-  w_0 = numpyro.sample('w_0', dist.Normal(-1.0, 0.9))
+  w_0 = numpyro.sample('w_0', dist.TruncatedNormal(-1.0, 0.9, low=-2.0, high=-0.3))
 
   cosmo = jc.Planck15(Omega_c=omega_c,
                       Omega_b=omega_b,
@@ -189,12 +189,12 @@ def lensingLogNormal(
       lognormal_shifts_params = np.load(DATA_DIR / 'lognormal_shifts_LSSTY10_om_s8_w_bin.npy')
     else:
       raise NotImplementedError
-    shift = shift_fn(lognormal_shifts_params, jnp.array([cosmo.Omega_m, cosmo.sigma_8, cosmo.w0]))
+    shift = shift_fn(lognormal_shifts_params, jnp.array([cosmo.Omega_m, cosmo.sigma8, cosmo.w0]))
     shift_array = fill_shift_array(shift)
 
   # Define redshift distribution
   nz = jc.redshift.smail_nz(a, b, z0, gals_per_arcmin2=gal_per_arcmin2)
-  nz_bins = subdivide(nz, nbins=nbins)
+  nz_bins = subdivide(nz, nbins=nbins, zphot_sigma=0.05)
   tracer = jc.probes.WeakLensing(nz_bins, sigma_e=sigma_e)
 
   # Calculate power spectrum
@@ -244,7 +244,7 @@ def lensingLogNormal(
     x = numpyro.sample(
         'y',
         dist.MultivariateNormal(loc=field, 
-                                covariance_matrix=jnp.diag(sigma_e**2 / (jnp.array([b.gal_per_arcmin2 for b in nz_bins]) * pix_area)))
+                                covariance_matrix=jnp.diag(sigma_e**2 / (jnp.array([b.gals_per_arcmin2 for b in nz_bins]) * pix_area)))
         )
   else:
     x = numpyro.deterministic('y', field)

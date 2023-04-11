@@ -100,7 +100,7 @@ def main(_):
 
     # Saving the results
     results = np.array(results).reshape([FLAGS.nsteps,FLAGS.nsteps,FLAGS.nsteps,FLAGS.nbins, 5])
-    
+
     np.save('outputs/lognormal_shifts_om_s8_w_bin.npy', results)
 
 if __name__ == "__main__":

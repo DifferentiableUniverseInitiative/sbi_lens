@@ -18,10 +18,8 @@ DATA_DIR = ROOT_DIR / "data"
 lognormal_array = []
 for i in range(5):
   lognormal_array.append(
-      np.loadtxt(
-          '/gpfs7kw/linkhome/rech/genmfd01/ulm75uc/CosMomentum/results_%i.txt'
-          % i,
-          delimiter=',').reshape([8, 8, 3]))
+      np.loadtxt(DATA_DIR / ("results_%i.txt" % i),
+                 delimiter=',').reshape([8, 8, 3]))
 lognormal_array = jnp.stack(lognormal_array)
 
 
@@ -176,7 +174,7 @@ def lensingLogNormal(
 
   pix_area = (map_size * 60 / N)**2
   map_size = map_size / 180 * jnp.pi
-  omega_c = numpyro.sample('omega_c',  dist.TruncatedNormal(0.2664, 0.2, low=0))
+  omega_c = numpyro.sample('omega_c', dist.TruncatedNormal(0.2664, 0.2, low=0))
   omega_b = numpyro.sample('omega_b', dist.Normal(0.0492, 0.006))
   sigma_8 = numpyro.sample('sigma_8', dist.Normal(0.831, 0.14))
   h_0 = numpyro.sample('h_0', dist.Normal(0.6727, 0.063))

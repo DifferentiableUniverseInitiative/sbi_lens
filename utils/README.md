@@ -1,9 +1,9 @@
-# Utility scripts 
+# Utility scripts
 
 
 ## Computing Log Normal Shift Parameters with Cosmomentum
 
-We provide the script `compute_log_normal_shifts.py` to evaluate the shift parameters on a range of cosmological parameter values 
+We provide the script `compute_log_normal_shifts.py` to evaluate the shift parameters on a range of cosmological parameter values
 and for a baseline set of redshift distributions.
 
 To use it, make sure to first compile Cosmomentum as follows:

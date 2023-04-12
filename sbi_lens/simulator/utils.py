@@ -57,26 +57,33 @@ def get_samples_and_scores(
         (log_prob, sample), score
     """
 
+  params_name = ['omega_c', 'omega_b', 'sigma_8', 'h_0', 'n_s', 'w_0']
+
   def log_prob_fn(theta, key):
-    cond_model = condition(model, {'omega_c': theta[0], 'sigma_8': theta[1]})
-    cond_model = seed(cond_model, key)
+    cond_model = seed(model, key)
+    cond_model = condition(
+      cond_model,
+      {'omega_c': theta[0],
+       'omega_b': theta[1],
+       'sigma_8': theta[2],
+       'h_0': theta[3],
+       'n_s': theta[4],
+       'w_0': theta[5],
+       }
+    )
     model_trace = trace(cond_model).get_trace()
     sample = {
-        'theta':
-        jnp.stack(
-            [model_trace['omega_c']['value'], model_trace['sigma_8']['value']],
-            axis=-1),
-        'y':
-        model_trace['y']['value']
+      'theta': jnp.stack(
+        [model_trace[name]['value'] for name in params_name],
+        axis=-1
+      ),
+      'y': model_trace['y']['value']
     }
 
+    logp = 0
     if score_type == 'density':
-      logp = model_trace['omega_c']['fn'].log_prob(
-          model_trace['omega_c']['value'])
-      logp += model_trace['sigma_8']['fn'].log_prob(
-          model_trace['sigma_8']['value'])
-    elif score_type == 'conditional':
-      logp = 0
+      for name in params_name:
+        logp += model_trace[name]['fn'].log_prob(model_trace[name]['value'])
 
     if with_noise:
       logp += model_trace['y']['fn'].log_prob(
@@ -90,14 +97,18 @@ def get_samples_and_scores(
 
   # Sample theta from the model
   if thetas is None:
-    omega_c = jax.vmap(
-        lambda k: trace(seed(model, k)).get_trace()['omega_c']['value'])(keys)
-    sigma_8 = jax.vmap(
-        lambda k: trace(seed(model, k)).get_trace()['sigma_8']['value'])(keys)
-    thetas = jnp.stack([omega_c, sigma_8], axis=-1)
-  res = jax.vmap(jax.value_and_grad(log_prob_fn, has_aux=True))(thetas, keys)
+    @jax.vmap
+    def get_params(key):
+      model_trace = trace(seed(model, key)).get_trace()
+      thetas = jnp.stack(
+        [model_trace[name]['value'] for name in params_name],
+        axis=-1
+      )
+      return thetas
 
-  return res
+    thetas = get_params(keys)
+
+  return jax.vmap(jax.value_and_grad(log_prob_fn, has_aux=True))(thetas, keys)
 
 
 def get_reference_sample_posterior_power_spectrum(
@@ -385,20 +396,12 @@ def get_reference_sample_posterior_full_field(
   if run_mcmc:
 
     def config(x):
-      if x['name'] == 'omega_c' and ('decentered' not in x['name']):
-        return LocScaleReparam(centered=0)
-      elif x['name'] == 'omega_b' and ('decentered' not in x['name']):
-        return LocScaleReparam(centered=0)
-      elif x['name'] == 'sigma_8' and ('decentered' not in x['name']):
-        return LocScaleReparam(centered=0)
-      elif x['name'] == 'h_0' and ('decentered' not in x['name']):
-        return LocScaleReparam(centered=0)
-      elif x['name'] == 'n_s' and ('decentered' not in x['name']):
-        return LocScaleReparam(centered=0)
-      elif x['name'] == 'w_0' and ('decentered' not in x['name']):
-        return LocScaleReparam(centered=0)
-      else:
-        return None
+        if type(x['fn']) is dist.TransformedDistribution:
+            return TransformReparam()
+        elif (type(x['fn']) is dist.Normal or type(x['fn']) is dist.TruncatedNormal)  and ('decentered' not in x['name']):
+            return LocScaleReparam(centered=0)
+        else:
+            return None
 
     observed_model = condition(model, {'y': m_data})
     observed_model_reparam = reparam(observed_model, config=config)

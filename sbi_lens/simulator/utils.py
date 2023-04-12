@@ -57,39 +57,6 @@ def get_samples_and_scores(
         (log_prob, sample), score
     """
 
-def get_samples_and_scores(
-    model,
-    key,
-    batch_size=64,
-    score_type='density',
-    thetas=None,
-    with_noise=True,
-):
-  """ Handling function sampling and computing the score from the model.
-
-    Parameters
-    ----------
-    model : numpyro model
-    key : PRNG Key
-    batch_size : int, optional
-        size of the batch to sample, by default 64
-    score_type : str, optional
-        'density' for nabla_theta log p(theta | y, z) or
-        'conditional' for nabla_theta log p(y | z, theta), by default 'density'
-    thetas : Array (batch_size, 2), optional
-        thetas used to sample simulations or
-        'None' sample thetas from the model, by default None
-    with_noise : bool, optional
-        add noise in simulations, by default True
-        note: if no noise the score is only nabla_theta log p(theta, z)
-        and log_prob log p(theta, z)
-
-    Returns
-    -------
-    Array
-        (log_prob, sample), score
-    """
-
   params_name = ['omega_c', 'omega_b', 'sigma_8', 'h_0', 'n_s', 'w_0']
 
   def log_prob_fn(theta, key):

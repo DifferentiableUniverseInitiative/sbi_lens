@@ -113,7 +113,7 @@ def get_reference_sample_posterior_power_spectrum(
     gals_per_arcmin2=27,
     sigma_e=0.26,
     nbins=5,
-    a=2, 
+    a=2,
     b=0.68,
     z0=0.11,
     m_data=None,
@@ -198,7 +198,7 @@ def get_reference_sample_posterior_power_spectrum(
     ):
         # Field parameters
         f_sky = map_size**2 / 41_253
-        
+
         # Cosmological parameters
         omega_c = sample('omega_c', dist.TruncatedNormal(0.2664, 0.2, low=0))
         omega_b = sample('omega_b', dist.Normal(0.0492, 0.006))

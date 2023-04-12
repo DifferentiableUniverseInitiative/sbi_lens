@@ -62,8 +62,8 @@ def fill_shift_array(shifts):
   shift_array: Jax.DeviceArray
    Array containing the proudct 𝜆i*𝜆j with i and j ith and jth redshift bin
   """
-  idx = jnp.mask_indices(len(shifts), jnp.triu)
-  shift_array = jnp.outer(shifts, shifts)[idx]
+  idx = np.mask_indices(len(shifts), np.triu)
+  shift_array = np.outer(shifts, shifts)[idx]
   return shift_array
 
 

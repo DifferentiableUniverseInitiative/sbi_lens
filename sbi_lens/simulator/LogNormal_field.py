@@ -63,7 +63,7 @@ def fill_shift_array(shifts):
    Array containing the proudct 𝜆i*𝜆j with i and j ith and jth redshift bin
   """
   idx = np.mask_indices(len(shifts), np.triu)
-  shift_array = np.outer(shifts, shifts)[idx]
+  shift_array = jnp.outer(shifts, shifts)[idx]
   return shift_array
 
 

@@ -53,7 +53,7 @@ class train_model():
     self.nb_pixels = nb_pixels
     self.nb_bins = nb_bins
 
-    if loss_name == ' mse':
+    if loss_name == 'mse':
       self.loss = self.loss_mse
     elif loss_name == 'vmim':
       self.loss = self.loss_vmim

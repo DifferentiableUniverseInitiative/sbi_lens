@@ -396,20 +396,12 @@ def get_reference_sample_posterior_full_field(
   if run_mcmc:
 
     def config(x):
-      if x['name'] == 'omega_c' and ('decentered' not in x['name']):
-        return LocScaleReparam(centered=0)
-      elif x['name'] == 'omega_b' and ('decentered' not in x['name']):
-        return LocScaleReparam(centered=0)
-      elif x['name'] == 'sigma_8' and ('decentered' not in x['name']):
-        return LocScaleReparam(centered=0)
-      elif x['name'] == 'h_0' and ('decentered' not in x['name']):
-        return LocScaleReparam(centered=0)
-      elif x['name'] == 'n_s' and ('decentered' not in x['name']):
-        return LocScaleReparam(centered=0)
-      elif x['name'] == 'w_0' and ('decentered' not in x['name']):
-        return LocScaleReparam(centered=0)
-      else:
-        return None
+        if type(x['fn']) is dist.TransformedDistribution:
+            return TransformReparam()
+        elif (type(x['fn']) is dist.Normal or type(x['fn']) is dist.TruncatedNormal)  and ('decentered' not in x['name']):
+            return LocScaleReparam(centered=0)
+        else:
+            return None
 
     observed_model = condition(model, {'y': m_data})
     observed_model_reparam = reparam(observed_model, config=config)

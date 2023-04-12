@@ -39,8 +39,8 @@ class photoz_bin(jc.redshift.redshift_distribution):
 
   @property
   def gals_per_steradian(self):
-      """Returns the number density of galaxies in steradian"""
-      return self.gals_per_arcmin2 * jc.redshift.steradian_to_arcmin2
+    """Returns the number density of galaxies in steradian"""
+    return self.gals_per_arcmin2 * jc.redshift.steradian_to_arcmin2
 
 
 def subdivide(pz, nbins, zphot_sigma):
@@ -53,8 +53,12 @@ def subdivide(pz, nbins, zphot_sigma):
   bins = []
   n_per_bin = 1. / nbins
   for i in range(nbins - 1):
-    zbound = brentq(lambda z: romberg(pz, 0., z, rtol=1e-4) - (i + 1.0) * n_per_bin,
-                    zbounds[i], pz.zmax, xtol=1e-3, rtol=1e-3)
+    zbound = brentq(lambda z: romberg(pz, 0., z, rtol=1e-4) -
+                    (i + 1.0) * n_per_bin,
+                    zbounds[i],
+                    pz.zmax,
+                    xtol=1e-3,
+                    rtol=1e-3)
     zbounds.append(zbound)
     new_bin = photoz_bin(pz, zbounds[i], zbounds[i + 1], zphot_sigma)
     bins.append(new_bin)

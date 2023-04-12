@@ -25,7 +25,8 @@ _DESCRIPTION = """
 class LensingLogNormalDatasetConfig(tfds.core.BuilderConfig):
 
   def __init__(self, *, N, map_size, gal_per_arcmin2, sigma_e, nbins, a, b, z0,
-               model_type, proposal, score_type, with_noise, **kwargs):
+               model_type, lognormal_shifts, proposal, score_type, with_noise,
+               **kwargs):
     v1 = tfds.core.Version("0.0.1")
     super(LensingLogNormalDatasetConfig,
           self).__init__(description=("Log Normal lensing simulations."),
@@ -40,6 +41,7 @@ class LensingLogNormalDatasetConfig(tfds.core.BuilderConfig):
     self.b = b
     self.z0 = z0
     self.model_type = model_type
+    self.lognormal_shifts = lognormal_shifts
     self.proposal = proposal
     self.score_type = score_type
     self.with_noise = with_noise
@@ -64,6 +66,7 @@ class LensingLogNormalDataset(tfds.core.GeneratorBasedBuilder):
           b=0.68,
           z0=0.11,
           model_type='lognormal',
+          lognormal_shifts=None,
           proposal=False,
           score_type='density',
           with_noise=False),
@@ -77,6 +80,7 @@ class LensingLogNormalDataset(tfds.core.GeneratorBasedBuilder):
                                     b=0.68,
                                     z0=0.11,
                                     model_type='lognormal',
+                                    lognormal_shifts=None,
                                     proposal=False,
                                     score_type='density',
                                     with_noise=True),
@@ -90,6 +94,7 @@ class LensingLogNormalDataset(tfds.core.GeneratorBasedBuilder):
                                     b=0.78,
                                     z0=0.13,
                                     model_type='lognormal',
+                                    lognormal_shifts=None,
                                     proposal=True,
                                     score_type='density',
                                     with_noise=True),
@@ -103,6 +108,7 @@ class LensingLogNormalDataset(tfds.core.GeneratorBasedBuilder):
                                     b=0.68,
                                     z0=0.11,
                                     model_type='lognormal',
+                                    lognormal_shifts='LSSTY10',
                                     proposal=True,
                                     score_type='density',
                                     with_noise=True),
@@ -116,6 +122,7 @@ class LensingLogNormalDataset(tfds.core.GeneratorBasedBuilder):
                                     b=0.68,
                                     z0=0.11,
                                     model_type='lognormal',
+                                    lognormal_shifts='LSSTY10',
                                     proposal=False,
                                     score_type='density',
                                     with_noise=False),
@@ -161,6 +168,7 @@ class LensingLogNormalDataset(tfds.core.GeneratorBasedBuilder):
                     self.builder_config.sigma_e, self.builder_config.nbins,
                     self.builder_config.a, self.builder_config.b,
                     self.builder_config.z0, self.builder_config.model_type,
+                    self.builder_config.lognormal_shifts,
                     self.builder_config.with_noise)
 
     @jax.jit

@@ -15,6 +15,7 @@ SOURCE_DIR = SOURCE_FILE.parent
 ROOT_DIR = SOURCE_DIR.parent.resolve()
 DATA_DIR = ROOT_DIR / "data"
 
+
 @jax.jit
 def shift_fn(params, theta):
   """
@@ -35,12 +36,16 @@ def shift_fn(params, theta):
   ntheta = len(params.shape[:-2])
   nbins = params.shape[-2]
   shift = [
-      map_coordinates(params[..., i, -1],
-                      jnp.stack([(theta[j] - params[...,j].min()) / (params[...,j].max() - params[...,j].min()) * params.shape[j] - 0.5
-                                  for j in range(ntheta)],
-                                axis=0).reshape([ntheta, -1]),
-                      order=1,
-                      mode='nearest').squeeze() for i in range(nbins)
+      map_coordinates(
+          params[..., i, -1],
+          jnp.stack([
+              (theta[j] - params[..., j].min()) /
+              (params[..., j].max() - params[..., j].min()) * params.shape[j] -
+              0.5 for j in range(ntheta)
+          ],
+                    axis=0).reshape([ntheta, -1]),
+          order=1,
+          mode='nearest').squeeze() for i in range(nbins)
   ]
   return jnp.stack(shift)
 
@@ -174,7 +179,8 @@ def lensingLogNormal(
   sigma_8 = numpyro.sample('sigma_8', dist.Normal(0.831, 0.14))
   h_0 = numpyro.sample('h_0', dist.Normal(0.6727, 0.063))
   n_s = numpyro.sample('n_s', dist.Normal(0.9645, 0.08))
-  w_0 = numpyro.sample('w_0', dist.TruncatedNormal(-1.0, 0.9, low=-2.0, high=-0.3))
+  w_0 = numpyro.sample('w_0',
+                       dist.TruncatedNormal(-1.0, 0.9, low=-2.0, high=-0.3))
 
   cosmo = jc.Planck15(Omega_c=omega_c,
                       Omega_b=omega_b,
@@ -186,10 +192,12 @@ def lensingLogNormal(
   # Load shift parameters corresponding to the model
   if model_type == 'lognormal':
     if lognormal_shifts == 'LSSTY10':
-      lognormal_shifts_params = np.load(DATA_DIR / 'lognormal_shifts_LSSTY10_om_s8_w_bin.npy')
+      lognormal_shifts_params = np.load(
+          DATA_DIR / 'lognormal_shifts_LSSTY10_om_s8_w_bin.npy')
     else:
       raise NotImplementedError
-    shift = shift_fn(lognormal_shifts_params, jnp.array([cosmo.Omega_m, cosmo.sigma8, cosmo.w0]))
+    shift = shift_fn(lognormal_shifts_params,
+                     jnp.array([cosmo.Omega_m, cosmo.sigma8, cosmo.w0]))
     shift_array = fill_shift_array(shift)
 
   # Define redshift distribution
@@ -237,15 +245,17 @@ def lensingLogNormal(
         jnp.exp(field - jnp.var(field, axis=(1, 2), keepdims=True) / 2) - 1)
 
   # Transposing the field to put the redshift axis last
-  field = jnp.transpose(field, [1,2,0])
+  field = jnp.transpose(field, [1, 2, 0])
 
   # Adding noise
   if with_noise == True:
     x = numpyro.sample(
         'y',
-        dist.MultivariateNormal(loc=field,
-                                covariance_matrix=jnp.diag(sigma_e**2 / (jnp.array([b.gals_per_arcmin2 for b in nz_bins]) * pix_area)))
-        )
+        dist.MultivariateNormal(
+            loc=field,
+            covariance_matrix=jnp.diag(
+                sigma_e**2 / (jnp.array([b.gals_per_arcmin2
+                                         for b in nz_bins]) * pix_area))))
   else:
     x = numpyro.deterministic('y', field)
 

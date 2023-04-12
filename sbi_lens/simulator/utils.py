@@ -23,9 +23,9 @@ a = 2
 b = 0.68
 z0 = 0.11
 nbins = 5
-nz = jc.redshift.smail_nz(a, b, z0, gals_per_arcmin2=27)
-nz_bins = subdivide(nz, nbins=nbins)
-tracer = jc.probes.WeakLensing(nz_bins, sigma_e=0.26)
+#nz = jc.redshift.smail_nz(a, b, z0, gals_per_arcmin2=27)
+#nz_bins = subdivide(nz, nbins=nbins)
+#tracer = jc.probes.WeakLensing(nz_bins, sigma_e=0.26)
 
 
 def get_samples_and_scores(
@@ -181,9 +181,9 @@ def get_reference_sample_posterior_power_spectrum(
                         h=h0[0],
                         n_s=ns[0],
                         w0=w0[0])
-    # nz = jc.redshift.smail_nz(a, b, z0, gals_per_arcmin2=gals_per_arcmin2)
-    # nz_bins = subdivide(nz, nbins=nbins)
-    # tracer = jc.probes.WeakLensing(nz_bins, sigma_e=sigma_e)
+    nz = jc.redshift.smail_nz(a, b, z0, gals_per_arcmin2=gals_per_arcmin2)
+    nz_bins = subdivide(nz, nbins=nbins)
+    tracer = jc.probes.WeakLensing(nz_bins, sigma_e=sigma_e)
     f_sky = map_size**2 / 41_253
     l_edges = np.arange(100.0, 5000.0, 50.0)
     l2 = lt.ConvergenceMap(m_data[0],
@@ -201,7 +201,7 @@ def get_reference_sample_posterior_power_spectrum(
                                                          f_sky=f_sky,
                                                          sparse=True)
 
-    @jax.jit
+    #@jax.jit
     @jax.vmap
     def log_prob_fn(params):
       cosmo = jc.Planck15(

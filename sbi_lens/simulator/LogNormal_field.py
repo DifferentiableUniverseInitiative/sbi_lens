@@ -22,7 +22,7 @@ def shift_fn(params, theta):
   -----------
 
   params: Jax.numpy.ndarray
-  The interpolation table of the shift parameters, with dimensions [n_omega_m, n_sigma_8, n_w, n_bins, 4] 
+  The interpolation table of the shift parameters, with dimensions [n_omega_m, n_sigma_8, n_w, n_bins, 4]
 
   theta: jax.numpy.ndarray
   Nd array of parameters [omega_m, sigma_8, w]
@@ -167,7 +167,7 @@ def lensingLogNormal(
   # Field parameters
   pix_area = (map_size * 60 / N)**2
   map_size = map_size / 180 * jnp.pi
-  
+
   # Cosmological parameters
   omega_c = numpyro.sample('omega_c', dist.TruncatedNormal(0.2664, 0.2, low=0))
   omega_b = numpyro.sample('omega_b', dist.Normal(0.0492, 0.006))
@@ -235,7 +235,7 @@ def lensingLogNormal(
     field = jnp.einsum(
         'i, ijk -> ijk', shift,
         jnp.exp(field - jnp.var(field, axis=(1, 2), keepdims=True) / 2) - 1)
-  
+
   # Transposing the field to put the redshift axis last
   field = jnp.transpose(field, [1,2,0])
 
@@ -243,7 +243,7 @@ def lensingLogNormal(
   if with_noise == True:
     x = numpyro.sample(
         'y',
-        dist.MultivariateNormal(loc=field, 
+        dist.MultivariateNormal(loc=field,
                                 covariance_matrix=jnp.diag(sigma_e**2 / (jnp.array([b.gals_per_arcmin2 for b in nz_bins]) * pix_area)))
         )
   else:

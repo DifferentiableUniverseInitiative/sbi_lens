@@ -111,7 +111,6 @@ def get_samples_and_scores(
   return jax.vmap(jax.value_and_grad(log_prob_fn, has_aux=True))(thetas, keys)
 
 
-
 def get_reference_sample_posterior_power_spectrum(
     Omega_c=0.2664,
     Omega_b=0.0492,

@@ -123,6 +123,7 @@ def get_reference_sample_posterior_power_spectrum(
     z0=0.11,
     m_data=None,
     num_results=None,
+    num_warmup=None,
     key=None,
 ):
   """ Posterior p(theta|x=m_data) from power spectrum analysis.
@@ -154,6 +155,9 @@ def get_reference_sample_posterior_power_spectrum(
     num_results : int
         Number of samples (only needed if run_mcmc=True), by default None
         if run_mcmc=True num_results can not be None
+    num_warmup : int
+        Number of warmup steps (only needed if run_mcmc=True), by default None
+        if run_mcmc=True num_warmup can not be None
     key : PRNG key
         only needed if run_mcmc=True, by default None
         if run_mcmc=True key can not be None
@@ -267,7 +271,7 @@ def get_reference_sample_posterior_power_spectrum(
 
     mcmc = numpyro.infer.MCMC(
         nuts_kernel,
-        num_warmup=10,
+        num_warmup=num_warmup,
         num_samples=num_results,
         num_chains=16,
         chain_method='vectorized',
@@ -313,6 +317,7 @@ def get_reference_sample_posterior_full_field(
     model=None,
     m_data=None,
     num_results=None,
+    num_warmup=None,
     key=None,
 ):
   """ Full field posterior p(theta|x=m_data).
@@ -345,6 +350,9 @@ def get_reference_sample_posterior_full_field(
     num_results : int
         Number of samples (only needed if run_mcmc=True), by default None
         if run_mcmc=True num_results can not be None
+    num_warmup : int
+        Number of warmup steps (only needed if run_mcmc=True), by default None
+        if run_mcmc=True num_warmup can not be None
     key : PRNG key
         only needed if run_mcmc=True, by default None
         if run_mcmc=True key can not be None
@@ -373,7 +381,7 @@ def get_reference_sample_posterior_full_field(
         max_tree_depth=6,
         step_size=0.02)
     mcmc = numpyro.infer.MCMC(nuts_kernel,
-                              num_warmup=100,
+                              num_warmup=num_warmup,
                               num_samples=num_results,
                               progress_bar=True)
 

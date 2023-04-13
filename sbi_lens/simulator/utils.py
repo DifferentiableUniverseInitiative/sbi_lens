@@ -112,12 +112,6 @@ def get_samples_and_scores(
 
 
 def get_reference_sample_posterior_power_spectrum(
-    Omega_c=0.2664,
-    Omega_b=0.0492,
-    sigma8=0.83,
-    h0=0.6727,
-    ns=0.9645,
-    w0=-1.0,
     run_mcmc=False,
     N=256,
     map_size=10,
@@ -132,23 +126,12 @@ def get_reference_sample_posterior_power_spectrum(
     key=None,
 ):
   """ Posterior p(theta|x=m_data) from power spectrum analysis.
+      Note: pre samples chains correspond to the following fiducial parameters:
+      (omega_c, omega_b, sigma_8, h_0, n_s, w_0)
+       = (0.2664, 0.0492, 0.831, 0.6727, 0.9645, -1.0)
 
     Parameters
     ----------
-    Omega_c: [float, float]
-        Fiducial and prior value of the cold matter density fraction.
-    Omega_b: [float, float]
-        Fiducial and prior value of the  baryonic matter density fraction.
-    sigma8: [float, float]
-        Fiducial and prior value of the variance of matter density perturbations at an 8 Mpc/h scale.
-    h: [float, float]
-      Fiducial and prior value of the Hubble constant divided by 100 km/s/Mpc; unitless.
-    ns:[float, float]
-    Fiducial and prior value of the primordial scalar perturbation spectral
-        index.
-    w0:[float, float]
-        Fiducial and prior value of the first order term of dark energy equation.
-
     run_mcmc : bool, optional
         if True the MCMC will be run,
         if False pre sampled chains are returned according to
@@ -318,17 +301,10 @@ def get_reference_sample_posterior_power_spectrum(
                      "{}N_{}ms_{}gpa_{}se.npy".format(
                          N, map_size, gals_per_arcmin2, sigma_e))
 
-    truth = jnp.array([Omega_c, Omega_b, sigma8, h0, ns, w0])[:, 0]
-    return theta, m_data, truth
+    return theta, m_data
 
 
 def get_reference_sample_posterior_full_field(
-    Omega_c=0.2664,
-    Omega_b=0.0492,
-    sigma8=0.83,
-    h0=0.6727,
-    ns=0.9645,
-    w0=-1.0,
     run_mcmc=False,
     N=256,
     map_size=10,
@@ -340,26 +316,12 @@ def get_reference_sample_posterior_full_field(
     key=None,
 ):
   """ Full field posterior p(theta|x=m_data).
+    Note: pre samples chains correspond to the following fiducial parameters:
+    (omega_c, omega_b, sigma_8, h_0, n_s, w_0)
+    = (0.2664, 0.0492, 0.831, 0.6727, 0.9645, -1.0)
 
     Parameters
     ----------
-    Omega_c: float
-        Fiducial value of the cold matter density fraction.
-    sigma8: float
-        Fiducial value of the variance of matter density perturbations at an 8 Mpc/h scale.
-    Omega_c: float
-        Fiducial value of the cold matter density fraction.
-    Omega_b: float
-        Fiducial value of the  baryonic matter density fraction.
-    sigma8: float
-        Fiducial value of the variance of matter density perturbations at an 8 Mpc/h scale.
-    h: float
-      Fiducial value of the Hubble constant divided by 100 km/s/Mpc; unitless.
-    ns: float
-    Fiducial value of the primordial scalar perturbation spectral
-        index.
-    w0:[float, float]
-        Fiducial value of the first order term of dark energy equation.
     run_mcmc : bool, optional
         if True the MCMC will be run,
         if False pre sampled chains are returned according to
@@ -398,7 +360,7 @@ def get_reference_sample_posterior_full_field(
     def config(x):
         if type(x['fn']) is dist.TransformedDistribution:
             return TransformReparam()
-        elif (type(x['fn']) is dist.Normal or type(x['fn']) is dist.TruncatedNormal)  and ('decentered' not in x['name']):
+        elif (type(x['fn']) is dist.Normal or type(x['fn']) is dist.TruncatedNormal) and ('decentered' not in x['name']):
             return LocScaleReparam(centered=0)
         else:
             return None
@@ -442,5 +404,4 @@ def get_reference_sample_posterior_full_field(
                      "{}N_{}ms_{}gpa_{}se.npy".format(
                          N, map_size, gals_per_arcmin2, sigma_e))
 
-    truth = jnp.array([Omega_c, Omega_b, sigma8, h0, ns, w0])
-    return theta, m_data, truth
+    return theta, m_data

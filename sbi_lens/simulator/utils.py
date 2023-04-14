@@ -122,8 +122,12 @@ def get_reference_sample_posterior_power_spectrum(
     b=0.68,
     z0=0.11,
     m_data=None,
-    num_results=None,
-    num_warmup=None,
+    num_results=500,
+    num_warmup=200,
+    num_chains=1,
+    chain_method='parallel',
+    max_tree_depth=6,
+    step_size=1e-2,
     key=None,
 ):
   """ Posterior p(theta|x=m_data) from power spectrum analysis.
@@ -134,7 +138,7 @@ def get_reference_sample_posterior_power_spectrum(
     Parameters
     ----------
     run_mcmc : bool, optional
-        if True the MCMC will be run,
+        if True the MCMC (No U-Turn Sampler) will be run,
         if False pre sampled chains are returned according to
         gals_per_arcmin2, sigma_e, N, map_size,
         by default False
@@ -147,20 +151,26 @@ def get_reference_sample_posterior_power_spectrum(
         Number of galaxies per arcmin, by default 30
     sigma_e : float
         Dispersion of the ellipticity distribution, by default 0.2
-    n_bins:Int
+    n_bins: int
         Number of redshift bins
     m_data : Array (N,N)
-        Lensing convergence map (only needed if run_mcmc=True), by default None
+        Lensing convergence map, by default None
         if run_mcmc=True m_data can not be None
     num_results : int
-        Number of samples (only needed if run_mcmc=True), by default None
-        if run_mcmc=True num_results can not be None
+        Number of samples, by default 500
     num_warmup : int
-        Number of warmup steps (only needed if run_mcmc=True), by default None
-        if run_mcmc=True num_warmup can not be None
+        Number of warmup steps, by default 200
+    num_chains : int
+        Number of MCMC chains to run, by default 1
+    chain_method : str
+        'parallel', 'sequential', 'vectorized', by default 'parallel'
+    max_tree_depth : int
+        Max depth of the binary tree created during the doubling scheme
+        of NUTS sampler, by default 6
+    step_size : float
+         Size of a single step, by default 1e-2
     key : PRNG key
-        only needed if run_mcmc=True, by default None
-        if run_mcmc=True key can not be None
+        Only needed if run_mcmc=True, by default None
 
     Returns
     -------
@@ -260,22 +270,18 @@ def get_reference_sample_posterior_power_spectrum(
             return None
 
     observed_model_reparam = reparam(observed_model, config=config)
-
     nuts_kernel = numpyro.infer.NUTS(
-        observed_model_reparam,
-        step_size=1e-2,
+        model=observed_model_reparam,
         init_strategy=numpyro.infer.init_to_median,
-        max_tree_depth=4,
-        dense_mass=True
-    )
-
+        max_tree_depth=max_tree_depth,
+        step_size=step_size)
     mcmc = numpyro.infer.MCMC(
-        nuts_kernel,
-        num_warmup=num_warmup,
-        num_samples=num_results,
-        num_chains=16,
-        chain_method='vectorized',
-        progress_bar=True
+       nuts_kernel,
+       num_warmup=num_warmup,
+       num_samples=num_results,
+       num_chains=num_chains,
+       chain_method=chain_method,
+       progress_bar=True
     )
 
     mcmc.run(key)
@@ -316,8 +322,12 @@ def get_reference_sample_posterior_full_field(
     sigma_e=0.26,
     model=None,
     m_data=None,
-    num_results=None,
-    num_warmup=None,
+    num_results=500,
+    num_warmup=200,
+    num_chains=1,
+    chain_method='parallel',
+    max_tree_depth=6,
+    step_size=1e-2,
     key=None,
 ):
   """ Full field posterior p(theta|x=m_data).
@@ -328,7 +338,7 @@ def get_reference_sample_posterior_full_field(
     Parameters
     ----------
     run_mcmc : bool, optional
-        if True the MCMC will be run,
+        if True the MCMC (No U-Turn Sampler) will be run,
         if False pre sampled chains are returned according to
         gals_per_arcmin2, sigma_e, N, map_size,
         by default False
@@ -345,17 +355,23 @@ def get_reference_sample_posterior_full_field(
         only needed if run_mcmc=True, by default None
         if run_mcmc=True model can not be None
     m_data : Array (N,N)
-        Lensing convergence map (only needed if run_mcmc=True), by default None
+        Lensing convergence map, by default None
         if run_mcmc=True m_data can not be None
     num_results : int
-        Number of samples (only needed if run_mcmc=True), by default None
-        if run_mcmc=True num_results can not be None
+        Number of samples, by default 500
     num_warmup : int
-        Number of warmup steps (only needed if run_mcmc=True), by default None
-        if run_mcmc=True num_warmup can not be None
+        Number of warmup steps, by default 200
+    num_chains : int
+        Number of MCMC chains to run, by default 1
+    chain_method : str
+        'parallel', 'sequential', 'vectorized', by default 'parallel'
+    max_tree_depth : int
+        Max depth of the binary tree created during the doubling scheme
+        of NUTS sampler, by default 6
+    step_size : float
+         Size of a single step, by default 1e-2
     key : PRNG key
-        only needed if run_mcmc=True, by default None
-        if run_mcmc=True key can not be None
+        Only needed if run_mcmc=True, by default None
 
     Returns
     -------
@@ -376,14 +392,18 @@ def get_reference_sample_posterior_full_field(
     observed_model = condition(model, {'y': m_data})
     observed_model_reparam = reparam(observed_model, config=config)
     nuts_kernel = numpyro.infer.NUTS(
-        observed_model_reparam,
+        model=observed_model_reparam,
         init_strategy=numpyro.infer.init_to_median,
-        max_tree_depth=6,
-        step_size=0.02)
-    mcmc = numpyro.infer.MCMC(nuts_kernel,
-                              num_warmup=num_warmup,
-                              num_samples=num_results,
-                              progress_bar=True)
+        max_tree_depth=max_tree_depth,
+        step_size=step_size)
+    mcmc = numpyro.infer.MCMC(
+       nuts_kernel,
+       num_warmup=num_warmup,
+       num_samples=num_results,
+       num_chains=num_chains,
+       chain_method=chain_method,
+       progress_bar=True
+    )
 
     mcmc.run(key)
     samples = mcmc.get_samples()

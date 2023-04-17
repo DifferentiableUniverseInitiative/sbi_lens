@@ -112,12 +112,6 @@ def get_samples_and_scores(
 
 
 def get_reference_sample_posterior_power_spectrum(
-    Omega_c=0.2664,
-    Omega_b=0.0492,
-    sigma8=0.83,
-    h0=0.6727,
-    ns=0.9645,
-    w0=-1.0,
     run_mcmc=False,
     N=256,
     map_size=10,
@@ -128,29 +122,23 @@ def get_reference_sample_posterior_power_spectrum(
     b=0.68,
     z0=0.11,
     m_data=None,
-    num_results=None,
+    num_results=500,
+    num_warmup=200,
+    num_chains=1,
+    chain_method='parallel',
+    max_tree_depth=6,
+    step_size=1e-2,
     key=None,
 ):
   """ Posterior p(theta|x=m_data) from power spectrum analysis.
+      Note: pre samples chains correspond to the following fiducial parameters:
+      (omega_c, omega_b, sigma_8, h_0, n_s, w_0)
+       = (0.2664, 0.0492, 0.831, 0.6727, 0.9645, -1.0)
 
     Parameters
     ----------
-    Omega_c: [float, float]
-        Fiducial and prior value of the cold matter density fraction.
-    Omega_b: [float, float]
-        Fiducial and prior value of the  baryonic matter density fraction.
-    sigma8: [float, float]
-        Fiducial and prior value of the variance of matter density perturbations at an 8 Mpc/h scale.
-    h: [float, float]
-      Fiducial and prior value of the Hubble constant divided by 100 km/s/Mpc; unitless.
-    ns:[float, float]
-    Fiducial and prior value of the primordial scalar perturbation spectral
-        index.
-    w0:[float, float]
-        Fiducial and prior value of the first order term of dark energy equation.
-
     run_mcmc : bool, optional
-        if True the MCMC will be run,
+        if True the MCMC (No U-Turn Sampler) will be run,
         if False pre sampled chains are returned according to
         gals_per_arcmin2, sigma_e, N, map_size,
         by default False
@@ -163,17 +151,26 @@ def get_reference_sample_posterior_power_spectrum(
         Number of galaxies per arcmin, by default 30
     sigma_e : float
         Dispersion of the ellipticity distribution, by default 0.2
-    n_bins:Int
+    n_bins: int
         Number of redshift bins
     m_data : Array (N,N)
-        Lensing convergence map (only needed if run_mcmc=True), by default None
+        Lensing convergence map, by default None
         if run_mcmc=True m_data can not be None
     num_results : int
-        Number of samples (only needed if run_mcmc=True), by default None
-        if run_mcmc=True num_results can not be None
+        Number of samples, by default 500
+    num_warmup : int
+        Number of warmup steps, by default 200
+    num_chains : int
+        Number of MCMC chains to run, by default 1
+    chain_method : str
+        'parallel', 'sequential', 'vectorized', by default 'parallel'
+    max_tree_depth : int
+        Max depth of the binary tree created during the doubling scheme
+        of NUTS sampler, by default 6
+    step_size : float
+         Size of a single step, by default 1e-2
     key : PRNG key
-        only needed if run_mcmc=True, by default None
-        if run_mcmc=True key can not be None
+        Only needed if run_mcmc=True, by default None
 
     Returns
     -------
@@ -273,22 +270,18 @@ def get_reference_sample_posterior_power_spectrum(
             return None
 
     observed_model_reparam = reparam(observed_model, config=config)
-
     nuts_kernel = numpyro.infer.NUTS(
-        observed_model_reparam,
-        step_size=1e-2,
+        model=observed_model_reparam,
         init_strategy=numpyro.infer.init_to_median,
-        max_tree_depth=4,
-        dense_mass=True
-    )
-
+        max_tree_depth=max_tree_depth,
+        step_size=step_size)
     mcmc = numpyro.infer.MCMC(
-        nuts_kernel,
-        num_warmup=10,
-        num_samples=num_results,
-        num_chains=16,
-        chain_method='vectorized',
-        progress_bar=True
+       nuts_kernel,
+       num_warmup=num_warmup,
+       num_samples=num_results,
+       num_chains=num_chains,
+       chain_method=chain_method,
+       progress_bar=True
     )
 
     mcmc.run(key)
@@ -318,17 +311,10 @@ def get_reference_sample_posterior_power_spectrum(
                      "{}N_{}ms_{}gpa_{}se.npy".format(
                          N, map_size, gals_per_arcmin2, sigma_e))
 
-    truth = jnp.array([Omega_c, Omega_b, sigma8, h0, ns, w0])[:, 0]
-    return theta, m_data, truth
+    return theta, m_data
 
 
 def get_reference_sample_posterior_full_field(
-    Omega_c=0.2664,
-    Omega_b=0.0492,
-    sigma8=0.83,
-    h0=0.6727,
-    ns=0.9645,
-    w0=-1.0,
     run_mcmc=False,
     N=256,
     map_size=10,
@@ -336,32 +322,24 @@ def get_reference_sample_posterior_full_field(
     sigma_e=0.26,
     model=None,
     m_data=None,
-    num_results=None,
+    num_results=500,
+    num_warmup=200,
+    nb_loop=1,
+    num_chains=1,
+    chain_method='parallel',
+    max_tree_depth=6,
+    step_size=1e-2,
     key=None,
 ):
   """ Full field posterior p(theta|x=m_data).
+    Note: pre samples chains correspond to the following fiducial parameters:
+    (omega_c, omega_b, sigma_8, h_0, n_s, w_0)
+    = (0.2664, 0.0492, 0.831, 0.6727, 0.9645, -1.0)
 
     Parameters
     ----------
-    Omega_c: float
-        Fiducial value of the cold matter density fraction.
-    sigma8: float
-        Fiducial value of the variance of matter density perturbations at an 8 Mpc/h scale.
-    Omega_c: float
-        Fiducial value of the cold matter density fraction.
-    Omega_b: float
-        Fiducial value of the  baryonic matter density fraction.
-    sigma8: float
-        Fiducial value of the variance of matter density perturbations at an 8 Mpc/h scale.
-    h: float
-      Fiducial value of the Hubble constant divided by 100 km/s/Mpc; unitless.
-    ns: float
-    Fiducial value of the primordial scalar perturbation spectral
-        index.
-    w0:[float, float]
-        Fiducial value of the first order term of dark energy equation.
     run_mcmc : bool, optional
-        if True the MCMC will be run,
+        if True the MCMC (No U-Turn Sampler) will be run,
         if False pre sampled chains are returned according to
         gals_per_arcmin2, sigma_e, N, map_size,
         by default False
@@ -378,14 +356,27 @@ def get_reference_sample_posterior_full_field(
         only needed if run_mcmc=True, by default None
         if run_mcmc=True model can not be None
     m_data : Array (N,N)
-        Lensing convergence map (only needed if run_mcmc=True), by default None
+        Lensing convergence map, by default None
         if run_mcmc=True m_data can not be None
     num_results : int
-        Number of samples (only needed if run_mcmc=True), by default None
-        if run_mcmc=True num_results can not be None
+        Number of samples, by default 500
+    num_warmup : int
+        Number of warmup steps, by default 200
+    nb_loop : int
+        Sequentially draw num_results samples
+        (ex nb_loop=2 and num_results=100, the number of samples you
+        get at the end is 200), by default 1
+    num_chains : int
+        Number of MCMC chains to run, by default 1
+    chain_method : str
+        'parallel', 'sequential', 'vectorized', by default 'parallel'
+    max_tree_depth : int
+        Max depth of the binary tree created during the doubling scheme
+        of NUTS sampler, by default 6
+    step_size : float
+         Size of a single step, by default 1e-2
     key : PRNG key
-        only needed if run_mcmc=True, by default None
-        if run_mcmc=True key can not be None
+        Only needed if run_mcmc=True, by default None
 
     Returns
     -------
@@ -398,35 +389,60 @@ def get_reference_sample_posterior_full_field(
     def config(x):
         if type(x['fn']) is dist.TransformedDistribution:
             return TransformReparam()
-        elif (type(x['fn']) is dist.Normal or type(x['fn']) is dist.TruncatedNormal)  and ('decentered' not in x['name']):
+        elif (type(x['fn']) is dist.Normal or type(x['fn']) is dist.TruncatedNormal) and ('decentered' not in x['name']):
             return LocScaleReparam(centered=0)
         else:
             return None
 
     observed_model = condition(model, {'y': m_data})
     observed_model_reparam = reparam(observed_model, config=config)
+
     nuts_kernel = numpyro.infer.NUTS(
-        observed_model_reparam,
+        model=observed_model_reparam,
         init_strategy=numpyro.infer.init_to_median,
-        max_tree_depth=6,
-        step_size=0.02)
-    mcmc = numpyro.infer.MCMC(nuts_kernel,
-                              num_warmup=100,
-                              num_samples=num_results,
-                              progress_bar=True)
+        max_tree_depth=max_tree_depth,
+        step_size=step_size)
+    mcmc = numpyro.infer.MCMC(
+       nuts_kernel,
+       num_warmup=num_warmup,
+       num_samples=num_results,
+       num_chains=num_chains,
+       chain_method=chain_method,
+       progress_bar=True
+    )
 
+    samples_ff_store = []
     mcmc.run(key)
-    samples = mcmc.get_samples()
+    samples_ = mcmc.get_samples()
+    mcmc.post_warmup_state = mcmc.last_state
 
-    return jnp.stack([
-        samples['omega_c'],
-        samples['omega_b'],
-        samples['sigma_8'],
-        samples['h_0'],
-        samples['n_s'],
-        samples['w_0'],
-    ],
-                     axis=-1)
+    # save only sample of interest
+    samples_ = jnp.stack([
+            samples_['omega_c'],
+            samples_['omega_b'],
+            samples_['sigma_8'],
+            samples_['h_0'],
+            samples_['n_s'],
+            samples_['w_0'],
+    ], axis=-1)
+    samples_ff_store.append(samples_)
+
+    for i in range(1, nb_loop):
+        mcmc.run(mcmc.post_warmup_state.rng_key)
+        samples_ = mcmc.get_samples()
+        mcmc.post_warmup_state = mcmc.last_state
+
+        # save only sample of interest
+        samples_ = jnp.stack([
+                samples_['omega_c'],
+                samples_['omega_b'],
+                samples_['sigma_8'],
+                samples_['h_0'],
+                samples_['n_s'],
+                samples_['w_0'],
+        ], axis=-1)
+        samples_ff_store.append(samples_)
+    return jnp.array(samples_ff_store).reshape([-1, 6])
 
   else:
     SOURCE_FILE = Path(__file__)
@@ -442,5 +458,4 @@ def get_reference_sample_posterior_full_field(
                      "{}N_{}ms_{}gpa_{}se.npy".format(
                          N, map_size, gals_per_arcmin2, sigma_e))
 
-    truth = jnp.array([Omega_c, Omega_b, sigma8, h0, ns, w0])
-    return theta, m_data, truth
+    return theta, m_data

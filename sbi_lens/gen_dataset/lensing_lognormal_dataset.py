@@ -137,14 +137,15 @@ class LensingLogNormalDataset(tfds.core.GeneratorBasedBuilder):
         features=tfds.features.FeaturesDict({
             'simulation':
             tfds.features.Tensor(shape=[
-                self.builder_config.N, self.builder_config.N,
+                self.builder_config.N,
+                self.builder_config.N,
                 self.builder_config.nbins
             ],
                                  dtype=tf.float32),
             'theta':
-            tfds.features.Tensor(shape=[2], dtype=tf.float32),
+            tfds.features.Tensor(shape=[6], dtype=tf.float32),
             'score':
-            tfds.features.Tensor(shape=[2], dtype=tf.float32),
+            tfds.features.Tensor(shape=[6], dtype=tf.float32),
         }),
         supervised_keys=None,
         homepage='https://dataset-homepage/',
@@ -162,23 +163,28 @@ class LensingLogNormalDataset(tfds.core.GeneratorBasedBuilder):
   def _generate_examples(self, size):
     """Yields examples."""
 
-    model = partial(lensingLogNormal, self.builder_config.N,
-                    self.builder_config.map_size,
-                    self.builder_config.gal_per_arcmin2,
-                    self.builder_config.sigma_e, self.builder_config.nbins,
-                    self.builder_config.a, self.builder_config.b,
-                    self.builder_config.z0, self.builder_config.model_type,
-                    self.builder_config.lognormal_shifts,
-                    self.builder_config.with_noise)
+    model = partial(
+      lensingLogNormal,
+      self.builder_config.N,
+      self.builder_config.map_size,
+      self.builder_config.gal_per_arcmin2,
+      self.builder_config.sigma_e,
+      self.builder_config.nbins,
+      self.builder_config.a,
+      self.builder_config.b,
+      self.builder_config.z0,
+      self.builder_config.model_type,
+      self.builder_config.lognormal_shifts,
+      self.builder_config.with_noise
+    )
 
     @jax.jit
-    def get_batch(key, thetas):
+    def get_batch(key):
       (_, samples), scores = get_samples_and_scores(
           model=model,
           key=key,
           batch_size=bs,
           score_type=self.builder_config.score_type,
-          thetas=thetas,
           with_noise=self.builder_config.with_noise)
 
       return samples['y'], samples['theta'], scores
@@ -188,7 +194,7 @@ class LensingLogNormalDataset(tfds.core.GeneratorBasedBuilder):
     bs = 50
     for i in range(size // bs):
       key, master_key = jax.random.split(master_key)
-      simu, theta, score = get_batch(key, None)
+      simu, theta, score = get_batch(key)
 
       for j in range(bs):
         yield '{}-{}'.format(i, j), {

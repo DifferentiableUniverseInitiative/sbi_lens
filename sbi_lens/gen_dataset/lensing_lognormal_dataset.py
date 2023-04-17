@@ -191,7 +191,7 @@ class LensingLogNormalDataset(tfds.core.GeneratorBasedBuilder):
 
     master_key = jax.random.PRNGKey(2948570986789)
 
-    bs = 50
+    bs = 20
     for i in range(size // bs):
       key, master_key = jax.random.split(master_key)
       simu, theta, score = get_batch(key)

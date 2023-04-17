@@ -402,7 +402,6 @@ def get_reference_sample_posterior_full_field(
         init_strategy=numpyro.infer.init_to_median,
         max_tree_depth=max_tree_depth,
         step_size=step_size)
-    
     mcmc = numpyro.infer.MCMC(
        nuts_kernel,
        num_warmup=num_warmup,
@@ -425,8 +424,7 @@ def get_reference_sample_posterior_full_field(
             samples_['h_0'],
             samples_['n_s'],
             samples_['w_0'],
-        ], axis=-1
-    )
+    ], axis=-1)
     samples_ff_store.append(samples_)
 
     for i in range(1, nb_loop):
@@ -442,10 +440,8 @@ def get_reference_sample_posterior_full_field(
                 samples_['h_0'],
                 samples_['n_s'],
                 samples_['w_0'],
-            ], axis=-1
-        )
+        ], axis=-1)
         samples_ff_store.append(samples_)
-    
     return jnp.array(samples_ff_store).reshape([-1, 6])
 
   else:

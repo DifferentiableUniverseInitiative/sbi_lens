@@ -324,6 +324,7 @@ def get_reference_sample_posterior_full_field(
     m_data=None,
     num_results=500,
     num_warmup=200,
+    nb_loop=1,
     num_chains=1,
     chain_method='parallel',
     max_tree_depth=6,
@@ -361,6 +362,10 @@ def get_reference_sample_posterior_full_field(
         Number of samples, by default 500
     num_warmup : int
         Number of warmup steps, by default 200
+    nb_loop : int
+        Sequentially draw num_results samples
+        (ex nb_loop=2 and num_results=100, the number of samples you
+        get at the end is 200), by default 1
     num_chains : int
         Number of MCMC chains to run, by default 1
     chain_method : str
@@ -391,11 +396,13 @@ def get_reference_sample_posterior_full_field(
 
     observed_model = condition(model, {'y': m_data})
     observed_model_reparam = reparam(observed_model, config=config)
+
     nuts_kernel = numpyro.infer.NUTS(
         model=observed_model_reparam,
         init_strategy=numpyro.infer.init_to_median,
         max_tree_depth=max_tree_depth,
         step_size=step_size)
+    
     mcmc = numpyro.infer.MCMC(
        nuts_kernel,
        num_warmup=num_warmup,
@@ -405,18 +412,41 @@ def get_reference_sample_posterior_full_field(
        progress_bar=True
     )
 
+    samples_ff_store = []
     mcmc.run(key)
-    samples = mcmc.get_samples()
+    samples_ = mcmc.get_samples()
+    mcmc.post_warmup_state = mcmc.last_state
 
-    return jnp.stack([
-        samples['omega_c'],
-        samples['omega_b'],
-        samples['sigma_8'],
-        samples['h_0'],
-        samples['n_s'],
-        samples['w_0'],
-    ],
-                     axis=-1)
+    # save only sample of interest
+    samples_ = jnp.stack([
+            samples_['omega_c'],
+            samples_['omega_b'],
+            samples_['sigma_8'],
+            samples_['h_0'],
+            samples_['n_s'],
+            samples_['w_0'],
+        ], axis=-1
+    )
+    samples_ff_store.append(samples_)
+
+    for i in range(1, nb_loop):
+        mcmc.run(mcmc.post_warmup_state.rng_key)
+        samples_ = mcmc.get_samples()
+        mcmc.post_warmup_state = mcmc.last_state
+
+        # save only sample of interest
+        samples_ = jnp.stack([
+                samples_['omega_c'],
+                samples_['omega_b'],
+                samples_['sigma_8'],
+                samples_['h_0'],
+                samples_['n_s'],
+                samples_['w_0'],
+            ], axis=-1
+        )
+        samples_ff_store.append(samples_)
+    
+    return jnp.array(samples_ff_store).reshape([-1, 6])
 
   else:
     SOURCE_FILE = Path(__file__)

@@ -3,8 +3,8 @@ from jax.tree_util import register_pytree_node_class
 import jax.numpy as jnp
 import jax
 from jax_cosmo.scipy.integrate import simps
-from scipy.integrate import romberg
-from scipy.optimize import brentq
+from tensorflow_probability.substrates.jax.math import find_root_chandrupatla
+from sbi_lens.simulator.romberg import romb
 
 
 @register_pytree_node_class
@@ -53,12 +53,11 @@ def subdivide(pz, nbins, zphot_sigma):
   bins = []
   n_per_bin = 1. / nbins
   for i in range(nbins - 1):
-    zbound = brentq(lambda z: romberg(pz, 0., z, rtol=1e-4) -
-                    (i + 1.0) * n_per_bin,
-                    zbounds[i],
-                    pz.zmax,
-                    xtol=1e-3,
-                    rtol=1e-3)
+    zbound = find_root_chandrupatla(
+      lambda z: romb(pz, 0., z) - (i + 1.0) * n_per_bin,
+      zbounds[i],
+      pz.zmax
+    ).estimated_root
     zbounds.append(zbound)
     new_bin = photoz_bin(pz, zbounds[i], zbounds[i + 1], zphot_sigma)
     bins.append(new_bin)

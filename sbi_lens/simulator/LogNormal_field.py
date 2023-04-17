@@ -135,7 +135,7 @@ def lensingLogNormal(
     z0=0.11,
     model_type='lognormal',
     lognormal_shifts='LSSTY10',
-    with_noise=False,
+    with_noise=True,
 ):
   """
   Calculate Log-Normal lensing convergence map.

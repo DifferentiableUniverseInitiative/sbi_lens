@@ -12,7 +12,7 @@ class train_model():
       params,
       state_resnet,
       None,
-      x.reshape([-1, self.nb_pixels, self.nb_pixels, self.nb_bins])
+      x
     )
 
     loss = jnp.mean(jnp.sum((y - theta)**2, axis=1))
@@ -25,15 +25,13 @@ class train_model():
       params,
       state_resnet,
       None,
-      x.reshape([-1, self.nb_pixels, self.nb_pixels, self.nb_bins])
+      x
     )
-    log_prob = jax.vmap(
-      lambda theta, x: self.nf.apply(
+    log_prob = self.nf.apply(
         params,
-        theta.reshape([1, 6]),
-        x.reshape([1, 6])
-      ).squeeze()
-    )(theta, y)
+        theta,
+        y
+      )
 
     return -jnp.mean(log_prob), opt_state_resnet
 

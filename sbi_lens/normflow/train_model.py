@@ -28,7 +28,7 @@ class train_model():
       x.reshape([-1, self.nb_pixels, self.nb_pixels, self.nb_bins])
     )
     log_prob = jax.vmap(
-      lambda theta, x: self.apply(
+      lambda theta, x: self.nf.apply(
         params,
         theta.reshape([1, 6]),
         x.reshape([1, 6])

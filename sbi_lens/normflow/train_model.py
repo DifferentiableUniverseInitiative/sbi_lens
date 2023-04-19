@@ -34,7 +34,7 @@ class train_model():
     return -jnp.mean(log_prob), opt_state_resnet
 
   def loss_nll(self, params, theta, x, _):
-    
+
     y, _ = self.compressor.apply(
       self.info_compressor[0],
       self.info_compressor[1],

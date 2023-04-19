@@ -18,7 +18,7 @@ class train_model():
 
     return loss, opt_state_resnet
 
-  def loss_vim(self, params, theta, x, state_resnet):
+  def loss_vmim(self, params, theta, x, state_resnet):
 
     y, opt_state_resnet = self.compressor.apply(
       params,
@@ -69,7 +69,7 @@ class train_model():
     if loss_name == 'train_compressor_mse':
       self.loss = self.loss_mse
     elif loss_name == 'train_compressor_vmim':
-      self.loss = self.loss_vim
+      self.loss = self.loss_vmim
     elif loss_name == 'loss_for_sbi':
         if info_compressor==None:
             raise NotImplementedError

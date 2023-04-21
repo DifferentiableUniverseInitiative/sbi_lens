@@ -138,32 +138,24 @@ def lensingLogNormal(
     with_noise=True,
 ):
   """
-  Calculate Log-Normal lensing convergence map.
+  Calculate Log-Normal or gaussian lensing convergence map.
   -----------
   N: int
   Number of pixels on the map.
-
   map_size: int
   The total angular size area is given by map_size x map_size
-
   gal_per_arcmin2: int
   Number of galaxies per arcmin
-
   sigma_e : float
   Dispersion of the ellipticity distribution
-
   nbins : Int
   Number of redshift bins (with equal galaxy number)
-
   a, b, zo: float
   Parameters defining the redshift distribution
-
   model_type: string
   Physical model adopted for the simulations
-
   with_noise : boolean
   If True Gaussian noise will be added to the lensing map
-
   Returns
   -------
   x: Jax.DeviceArray (N,N)
@@ -209,13 +201,19 @@ def lensingLogNormal(
   ell_tab = 2 * jnp.pi * abs(jnp.fft.fftfreq(2 * N, d=map_size / (2 * N)))
   cell_tab = jc.angular_cl.angular_cl(cosmo, ell_tab, [tracer])
   power = []
-  for cl, l_shift in zip(cell_tab, shift_array):
-    P = lambda k: jc.scipy.interpolate.interp(k.flatten(), ell_tab, cl
-                                              ).reshape(k.shape)
-    power_map = make_power_map(P, N, map_size)
-    if model_type == 'lognormal':
+  if model_type == 'lognormal':
+    for cl, l_shift in zip(cell_tab, shift_array):
+      P = lambda k: jc.scipy.interpolate.interp(k.flatten(), ell_tab, cl
+                                                ).reshape(k.shape)
+      power_map = make_power_map(P, N, map_size)
       power_map = make_lognormal_power_map(power_map, l_shift)
-    power.append(power_map)
+      power.append(power_map)
+  elif model_type == 'gaussian':
+    for cl in cell_tab:
+      P = lambda k: jc.scipy.interpolate.interp(k.flatten(), ell_tab, cl
+                                                ).reshape(k.shape)
+      power_map = make_power_map(P, N, map_size)
+      power.append(power_map)
   power = jnp.stack(power, axis=-1)
 
   @jax.vmap

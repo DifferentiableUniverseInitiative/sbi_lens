@@ -137,8 +137,7 @@ class LensingLogNormalDataset(tfds.core.GeneratorBasedBuilder):
         features=tfds.features.FeaturesDict({
             'simulation':
             tfds.features.Tensor(shape=[
-                self.builder_config.N,
-                self.builder_config.N,
+                self.builder_config.N, self.builder_config.N,
                 self.builder_config.nbins
             ],
                                  dtype=tf.float32),
@@ -163,20 +162,14 @@ class LensingLogNormalDataset(tfds.core.GeneratorBasedBuilder):
   def _generate_examples(self, size):
     """Yields examples."""
 
-    model = partial(
-      lensingLogNormal,
-      self.builder_config.N,
-      self.builder_config.map_size,
-      self.builder_config.gal_per_arcmin2,
-      self.builder_config.sigma_e,
-      self.builder_config.nbins,
-      self.builder_config.a,
-      self.builder_config.b,
-      self.builder_config.z0,
-      self.builder_config.model_type,
-      self.builder_config.lognormal_shifts,
-      self.builder_config.with_noise
-    )
+    model = partial(lensingLogNormal, self.builder_config.N,
+                    self.builder_config.map_size,
+                    self.builder_config.gal_per_arcmin2,
+                    self.builder_config.sigma_e, self.builder_config.nbins,
+                    self.builder_config.a, self.builder_config.b,
+                    self.builder_config.z0, self.builder_config.model_type,
+                    self.builder_config.lognormal_shifts,
+                    self.builder_config.with_noise)
 
     @jax.jit
     def get_batch(key):

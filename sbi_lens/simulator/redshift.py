@@ -54,10 +54,8 @@ def subdivide(pz, nbins, zphot_sigma):
   n_per_bin = 1. / nbins
   for i in range(nbins - 1):
     zbound = find_root_chandrupatla(
-      lambda z: romb(pz, 0., z) - (i + 1.0) * n_per_bin,
-      zbounds[i],
-      pz.zmax
-    ).estimated_root
+        lambda z: romb(pz, 0., z) - (i + 1.0) * n_per_bin, zbounds[i],
+        pz.zmax).estimated_root
     zbounds.append(zbound)
     new_bin = photoz_bin(pz, zbounds[i], zbounds[i + 1], zphot_sigma)
     bins.append(new_bin)

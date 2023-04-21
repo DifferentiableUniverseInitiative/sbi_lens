@@ -62,22 +62,21 @@ def get_samples_and_scores(
   def log_prob_fn(theta, key):
     cond_model = seed(model, key)
     cond_model = condition(
-      cond_model,
-      {'omega_c': theta[0],
-       'omega_b': theta[1],
-       'sigma_8': theta[2],
-       'h_0': theta[3],
-       'n_s': theta[4],
-       'w_0': theta[5],
-       }
-    )
+        cond_model, {
+            'omega_c': theta[0],
+            'omega_b': theta[1],
+            'sigma_8': theta[2],
+            'h_0': theta[3],
+            'n_s': theta[4],
+            'w_0': theta[5],
+        })
     model_trace = trace(cond_model).get_trace()
     sample = {
-      'theta': jnp.stack(
-        [model_trace[name]['value'] for name in params_name],
-        axis=-1
-      ),
-      'y': model_trace['y']['value']
+        'theta':
+        jnp.stack([model_trace[name]['value'] for name in params_name],
+                  axis=-1),
+        'y':
+        model_trace['y']['value']
     }
 
     logp = 0
@@ -97,13 +96,12 @@ def get_samples_and_scores(
 
   # Sample theta from the model
   if thetas is None:
+
     @jax.vmap
     def get_params(key):
       model_trace = trace(seed(model, key)).get_trace()
-      thetas = jnp.stack(
-        [model_trace[name]['value'] for name in params_name],
-        axis=-1
-      )
+      thetas = jnp.stack([model_trace[name]['value'] for name in params_name],
+                         axis=-1)
       return thetas
 
     thetas = get_params(keys)
@@ -184,90 +182,80 @@ def get_reference_sample_posterior_power_spectrum(
     nz_bins = subdivide(nz, nbins=nbins, zphot_sigma=0.05)
 
     l_edges = np.arange(100.0, 5000.0, 50.0)
-    l2 = lt.ConvergenceMap(
-      m_data[..., 0],
-      map_size * u.deg
-    ).powerSpectrum(l_edges)[0]
+    l2 = lt.ConvergenceMap(m_data[..., 0],
+                           map_size * u.deg).powerSpectrum(l_edges)[0]
     pl_array = []
     for i, j in itertools.combinations_with_replacement(range(nbins), 2):
-        pi = lt.ConvergenceMap(m_data[..., i], angle=map_size * u.deg).cross(
-            lt.ConvergenceMap(m_data[..., j], angle=map_size * u.deg),
-            l_edges=l_edges)[1]
-        pl_array.append(pi)
+      pi = lt.ConvergenceMap(m_data[..., i], angle=map_size * u.deg).cross(
+          lt.ConvergenceMap(m_data[..., j], angle=map_size * u.deg),
+          l_edges=l_edges)[1]
+      pl_array.append(pi)
 
     # Let's define the observations
     ell = l2
     cl_obs = np.stack(pl_array)
 
     def lensingPS(
-      N=N,
-      map_size=map_size,
-      sigma_e=sigma_e,
-    ):
-        # Field parameters
-        f_sky = map_size**2 / 41_253
-
-        # Cosmological parameters
-        omega_c = sample('omega_c', dist.TruncatedNormal(0.2664, 0.2, low=0))
-        omega_b = sample('omega_b', dist.Normal(0.0492, 0.006))
-        sigma_8 = sample('sigma_8', dist.Normal(0.831, 0.14))
-        h_0 = sample('h_0', dist.Normal(0.6727, 0.063))
-        n_s = sample('n_s', dist.Normal(0.9645, 0.08))
-        w_0 = sample('w_0', dist.TruncatedNormal(-1.0, 0.9, low=-2.0, high=-0.3))
-
-        cosmo = jc.Planck15(
-            Omega_c=omega_c,
-            Omega_b=omega_b,
-            h=h_0,
-            n_s=n_s,
-            sigma8=sigma_8,
-            w0=w_0
-        )
-
-        tracer = jc.probes.WeakLensing(nz_bins, sigma_e=sigma_e)
-
-        # Calculate power spectrum
-        cl_noise = jc.angular_cl.noise_cl(ell, [tracer]).flatten()
-        cl, C = jc.angular_cl.gaussian_cl_covariance_and_mean(
-            cosmo,
-            ell,
-            [tracer],
-            f_sky=f_sky,
-            sparse=True
-        )
-
-        # Compute precision matrix
-        P = jc.sparse.to_dense(jc.sparse.inv(jax.lax.stop_gradient(C)))
-        C = jc.sparse.to_dense(C)
-
-        cl = sample(
-            'cl',
-            dist.MultivariateNormal(
-                cl+cl_noise,
-                precision_matrix=P,
-                covariance_matrix=C
-            )
-        )
-
-        return cl
-
-    model_lensingPS = partial(
-        lensingPS,
         N=N,
         map_size=map_size,
-        sigma_e=sigma_e
-    )
+        sigma_e=sigma_e,
+    ):
+      # Field parameters
+      f_sky = map_size**2 / 41_253
+
+      # Cosmological parameters
+      omega_c = sample('omega_c', dist.TruncatedNormal(0.2664, 0.2, low=0))
+      omega_b = sample('omega_b', dist.Normal(0.0492, 0.006))
+      sigma_8 = sample('sigma_8', dist.Normal(0.831, 0.14))
+      h_0 = sample('h_0', dist.Normal(0.6727, 0.063))
+      n_s = sample('n_s', dist.Normal(0.9645, 0.08))
+      w_0 = sample('w_0', dist.TruncatedNormal(-1.0, 0.9, low=-2.0, high=-0.3))
+
+      cosmo = jc.Planck15(Omega_c=omega_c,
+                          Omega_b=omega_b,
+                          h=h_0,
+                          n_s=n_s,
+                          sigma8=sigma_8,
+                          w0=w_0)
+
+      tracer = jc.probes.WeakLensing(nz_bins, sigma_e=sigma_e)
+
+      # Calculate power spectrum
+      cl_noise = jc.angular_cl.noise_cl(ell, [tracer]).flatten()
+      cl, C = jc.angular_cl.gaussian_cl_covariance_and_mean(cosmo,
+                                                            ell, [tracer],
+                                                            f_sky=f_sky,
+                                                            sparse=True)
+
+      # Compute precision matrix
+      P = jc.sparse.to_dense(jc.sparse.inv(jax.lax.stop_gradient(C)))
+      C = jc.sparse.to_dense(C)
+
+      cl = sample(
+          'cl',
+          dist.MultivariateNormal(cl + cl_noise,
+                                  precision_matrix=P,
+                                  covariance_matrix=C))
+
+      return cl
+
+    model_lensingPS = partial(lensingPS,
+                              N=N,
+                              map_size=map_size,
+                              sigma_e=sigma_e)
 
     # Now we condition the model on obervations
     observed_model = condition(model_lensingPS, {'cl': cl_obs.flatten()})
 
     def config(x):
-        if type(x['fn']) is dist.TransformedDistribution:
-            return TransformReparam()
-        elif (type(x['fn']) is dist.Normal or type(x['fn']) is dist.TruncatedNormal)  and ('decentered' not in x['name']):
-            return LocScaleReparam(centered=0)
-        else:
-            return None
+      if type(x['fn']) is dist.TransformedDistribution:
+        return TransformReparam()
+      elif (type(x['fn']) is dist.Normal
+            or type(x['fn']) is dist.TruncatedNormal) and ('decentered'
+                                                           not in x['name']):
+        return LocScaleReparam(centered=0)
+      else:
+        return None
 
     observed_model_reparam = reparam(observed_model, config=config)
     nuts_kernel = numpyro.infer.NUTS(
@@ -275,14 +263,12 @@ def get_reference_sample_posterior_power_spectrum(
         init_strategy=numpyro.infer.init_to_median,
         max_tree_depth=max_tree_depth,
         step_size=step_size)
-    mcmc = numpyro.infer.MCMC(
-       nuts_kernel,
-       num_warmup=num_warmup,
-       num_samples=num_results,
-       num_chains=num_chains,
-       chain_method=chain_method,
-       progress_bar=True
-    )
+    mcmc = numpyro.infer.MCMC(nuts_kernel,
+                              num_warmup=num_warmup,
+                              num_samples=num_results,
+                              num_chains=num_chains,
+                              chain_method=chain_method,
+                              progress_bar=True)
 
     mcmc.run(key)
     samples = mcmc.get_samples()
@@ -293,7 +279,8 @@ def get_reference_sample_posterior_power_spectrum(
         samples['h_0'],
         samples['n_s'],
         samples['w_0'],
-    ], axis=-1)
+    ],
+                        axis=-1)
 
     return samples
 
@@ -387,12 +374,14 @@ def get_reference_sample_posterior_full_field(
   if run_mcmc:
 
     def config(x):
-        if type(x['fn']) is dist.TransformedDistribution:
-            return TransformReparam()
-        elif (type(x['fn']) is dist.Normal or type(x['fn']) is dist.TruncatedNormal) and ('decentered' not in x['name']):
-            return LocScaleReparam(centered=0)
-        else:
-            return None
+      if type(x['fn']) is dist.TransformedDistribution:
+        return TransformReparam()
+      elif (type(x['fn']) is dist.Normal
+            or type(x['fn']) is dist.TruncatedNormal) and ('decentered'
+                                                           not in x['name']):
+        return LocScaleReparam(centered=0)
+      else:
+        return None
 
     observed_model = condition(model, {'y': m_data})
     observed_model_reparam = reparam(observed_model, config=config)
@@ -402,14 +391,12 @@ def get_reference_sample_posterior_full_field(
         init_strategy=numpyro.infer.init_to_median,
         max_tree_depth=max_tree_depth,
         step_size=step_size)
-    mcmc = numpyro.infer.MCMC(
-       nuts_kernel,
-       num_warmup=num_warmup,
-       num_samples=num_results,
-       num_chains=num_chains,
-       chain_method=chain_method,
-       progress_bar=True
-    )
+    mcmc = numpyro.infer.MCMC(nuts_kernel,
+                              num_warmup=num_warmup,
+                              num_samples=num_results,
+                              num_chains=num_chains,
+                              chain_method=chain_method,
+                              progress_bar=True)
 
     samples_ff_store = []
     mcmc.run(key)
@@ -418,30 +405,32 @@ def get_reference_sample_posterior_full_field(
 
     # save only sample of interest
     samples_ = jnp.stack([
-            samples_['omega_c'],
-            samples_['omega_b'],
-            samples_['sigma_8'],
-            samples_['h_0'],
-            samples_['n_s'],
-            samples_['w_0'],
-    ], axis=-1)
+        samples_['omega_c'],
+        samples_['omega_b'],
+        samples_['sigma_8'],
+        samples_['h_0'],
+        samples_['n_s'],
+        samples_['w_0'],
+    ],
+                         axis=-1)
     samples_ff_store.append(samples_)
 
     for i in range(1, nb_loop):
-        mcmc.run(mcmc.post_warmup_state.rng_key)
-        samples_ = mcmc.get_samples()
-        mcmc.post_warmup_state = mcmc.last_state
+      mcmc.run(mcmc.post_warmup_state.rng_key)
+      samples_ = mcmc.get_samples()
+      mcmc.post_warmup_state = mcmc.last_state
 
-        # save only sample of interest
-        samples_ = jnp.stack([
-                samples_['omega_c'],
-                samples_['omega_b'],
-                samples_['sigma_8'],
-                samples_['h_0'],
-                samples_['n_s'],
-                samples_['w_0'],
-        ], axis=-1)
-        samples_ff_store.append(samples_)
+      # save only sample of interest
+      samples_ = jnp.stack([
+          samples_['omega_c'],
+          samples_['omega_b'],
+          samples_['sigma_8'],
+          samples_['h_0'],
+          samples_['n_s'],
+          samples_['w_0'],
+      ],
+                           axis=-1)
+      samples_ff_store.append(samples_)
     return jnp.array(samples_ff_store).reshape([-1, 6])
 
   else:

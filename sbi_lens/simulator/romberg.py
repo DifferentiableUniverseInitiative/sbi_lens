@@ -24,8 +24,9 @@ __all__ = ["romb"]
 # Adapted to scipy by Travis Oliphant <oliphant.travis@ieee.org>
 # last revision: Dec 2001
 
+
 def romb(function, a, b, args=(), divmax=6, return_error=False):
-    """
+  """
     Romberg integration of a callable function or method.
     Returns the integral of `function` (a function of one variable)
     over the interval (`a`, `b`).
@@ -86,34 +87,34 @@ def romb(function, a, b, args=(), divmax=6, return_error=False):
     >>> print("%g %g" % (2*result, erf(1)))
     0.842701 0.842701
     """
-    vfunc = lambda x: function(x, *args)
+  vfunc = lambda x: function(x, *args)
 
-    n = 1
-    interval = [a, b]
-    intrange = b - a
-    ordsum = _difftrap1(vfunc, interval)
-    result = intrange * ordsum
-    state = np.repeat(np.atleast_1d(result), divmax + 1, axis=-1)
-    err = np.inf
+  n = 1
+  interval = [a, b]
+  intrange = b - a
+  ordsum = _difftrap1(vfunc, interval)
+  result = intrange * ordsum
+  state = np.repeat(np.atleast_1d(result), divmax + 1, axis=-1)
+  err = np.inf
 
-    def scan_fn(carry, y):
-        x, k = carry
-        x = _romberg_diff(y, x, k + 1)
-        return (x, k + 1), x
+  def scan_fn(carry, y):
+    x, k = carry
+    x = _romberg_diff(y, x, k + 1)
+    return (x, k + 1), x
 
-    for i in range(1, divmax + 1):
-        n = 2**i
-        ordsum = ordsum + _difftrapn(vfunc, interval, n)
+  for i in range(1, divmax + 1):
+    n = 2**i
+    ordsum = ordsum + _difftrapn(vfunc, interval, n)
 
-        x = intrange * ordsum / n
-        _, new_state = jax.lax.scan(scan_fn, (x, 0), state[:-1])
+    x = intrange * ordsum / n
+    _, new_state = jax.lax.scan(scan_fn, (x, 0), state[:-1])
 
-        new_state = np.concatenate([np.atleast_1d(x), new_state])
+    new_state = np.concatenate([np.atleast_1d(x), new_state])
 
-        err = np.abs(state[i - 1] - new_state[i])
-        state = new_state
+    err = np.abs(state[i - 1] - new_state[i])
+    state = new_state
 
-    if return_error:
-        return state[i], err
-    else:
-        return state[i]
+  if return_error:
+    return state[i], err
+  else:
+    return state[i]

@@ -3,7 +3,7 @@ import jax.numpy as jnp
 import optax
 from functools import partial
 
-class train_model():
+class TrainModel():
 
   def loss_mse(self, params, theta, x, state_resnet):
 

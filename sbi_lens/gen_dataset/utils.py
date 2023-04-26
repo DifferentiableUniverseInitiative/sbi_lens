@@ -46,4 +46,3 @@ def augmentation_noise(
     'theta': example['theta'],
     'score': example['score']
   }
-

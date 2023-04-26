@@ -28,7 +28,6 @@ from sbi_lens.normflow.models import (
 from sbi_lens.normflow.train_model import TrainModel
 from sbi_lens.config import config_lsst_y_10
 
-
 # script arguments
 parser = argparse.ArgumentParser()
 parser.add_argument("--total_steps", type=int, default=50)
@@ -41,7 +40,6 @@ SOURCE_FILE = Path(__file__)
 SOURCE_DIR = SOURCE_FILE.parent
 ROOT_DIR = SOURCE_DIR.parent.resolve()
 DATA_DIR = ROOT_DIR / "sbi_lens/data"
-
 
 print('######## CONFIG LSST Y 10 ########')
 
@@ -59,7 +57,6 @@ z0 = config_lsst_y_10.z0
 truth = config_lsst_y_10.truth
 
 params_name = config_lsst_y_10.params_name
-
 
 print('######## LOAD OBSERVATION ########')
 
@@ -173,7 +170,6 @@ lr_scheduler = optax.piecewise_constant_schedule(
   }
 )
 
-
 optimizer_c = optax.adam(learning_rate=lr_scheduler)
 opt_state_c = optimizer_c.init(parameters_compressor)
 
@@ -185,7 +181,6 @@ model_compressor = TrainModel(
   nb_pixels=N,
   nb_bins=nbins
 )
-
 
 ds = tfds.load(
   'LensingLogNormalDataset/year_10_without_noise_score_density',
@@ -217,7 +212,6 @@ for batch in tqdm(range(total_steps + 1)):
     if jnp.isnan(l):
       print('NaN Loss')
       break
-
 
 # save params
 

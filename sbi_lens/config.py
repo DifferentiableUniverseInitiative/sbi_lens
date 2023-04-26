@@ -42,7 +42,6 @@ class Config:
       n_s,
       w_0
     ]
-  
 
 config_lsst_y_10 = Config(
   N=256,

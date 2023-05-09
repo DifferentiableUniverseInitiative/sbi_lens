@@ -169,7 +169,7 @@ def get_reference_sample_posterior_power_spectrum(
     step_size : float
         Size of a single step, by default 1e-2
     init_strat : callable
-        Sampler initialization Strategies. 
+        Sampler initialization Strategies.
         See https://num.pyro.ai/en/stable/utilities.html#init-strategy
     key : PRNG key
         Only needed if run_mcmc=True, by default None
@@ -368,7 +368,7 @@ def get_reference_sample_posterior_full_field(
     step_size : float
         Size of a single step, by default 1e-2
     init_strat : callable
-        Sampler initialization Strategies. 
+        Sampler initialization Strategies.
         See https://num.pyro.ai/en/stable/utilities.html#init-strategy
     key : PRNG key
         Only needed if run_mcmc=True, by default None

@@ -147,7 +147,7 @@ class LensingLogNormalDataset(tfds.core.GeneratorBasedBuilder):
       ROOT_DIR = SOURCE_DIR.parent.resolve()
       DATA_DIR = ROOT_DIR / "data"
 
-      theta = np.load(DATA_DIR / "posterior_power_spectrum__"
+      thetas = np.load(DATA_DIR / "posterior_power_spectrum__"
                       "{}N_{}ms_{}gpa_{}se.npy".format(
                           self.builder_config.N,
                           self.builder_config.map_size,
@@ -158,8 +158,8 @@ class LensingLogNormalDataset(tfds.core.GeneratorBasedBuilder):
     else: 
         thetas = np.array([None]).repeat(size // bs)
 
-    if size < len(theta):
-      size = len(theta)
+    if size < len(thetas):
+      size = len(thetas)
 
     model = partial(lensingLogNormal,
                     self.builder_config.N,

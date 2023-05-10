@@ -157,6 +157,9 @@ class LensingLogNormalDataset(tfds.core.GeneratorBasedBuilder):
     else: 
         thetas = np.array([None]).repeat(size // bs)
 
+    if size < len(theta):
+      size = len(theta)
+
     model = partial(lensingLogNormal,
                     self.builder_config.N,
                     self.builder_config.map_size,

@@ -2,6 +2,7 @@ import tensorflow_datasets as tfds
 import tensorflow as tf
 import tensorflow_probability as tfp
 from pathlib import Path
+import numpy as np 
 
 tfp = tfp.substrates.jax
 tfd = tfp.distributions

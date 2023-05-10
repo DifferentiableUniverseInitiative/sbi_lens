@@ -151,7 +151,7 @@ class LensingLogNormalDataset(tfds.core.GeneratorBasedBuilder):
                       "{}N_{}ms_{}gpa_{}se.npy".format(
                           self.builder_config.N,
                           self.builder_config.map_size,
-                          self.builder_config.gals_per_arcmin2,
+                          self.builder_config.gal_per_arcmin2,
                           self.builder_config.sigma_e
                       )
       )

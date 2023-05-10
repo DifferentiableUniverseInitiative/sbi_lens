@@ -155,6 +155,7 @@ class LensingLogNormalDataset(tfds.core.GeneratorBasedBuilder):
                           self.builder_config.sigma_e
                       )
       )
+      thetas = thetas.reshape([-1, bs, 6])
     else: 
         thetas = np.array([None]).repeat(size // bs)
 

@@ -126,6 +126,7 @@ def get_reference_sample_posterior_power_spectrum(
     chain_method='parallel',
     max_tree_depth=6,
     step_size=1e-2,
+    init_strat=numpyro.infer.init_to_value,
     key=None,
 ):
   """ Posterior p(theta|x=m_data) from power spectrum analysis.
@@ -166,7 +167,10 @@ def get_reference_sample_posterior_power_spectrum(
         Max depth of the binary tree created during the doubling scheme
         of NUTS sampler, by default 6
     step_size : float
-         Size of a single step, by default 1e-2
+        Size of a single step, by default 1e-2
+    init_strat : callable
+        Sampler initialization Strategies.
+        See https://num.pyro.ai/en/stable/utilities.html#init-strategy
     key : PRNG key
         Only needed if run_mcmc=True, by default None
 
@@ -260,7 +264,7 @@ def get_reference_sample_posterior_power_spectrum(
     observed_model_reparam = reparam(observed_model, config=config)
     nuts_kernel = numpyro.infer.NUTS(
         model=observed_model_reparam,
-        init_strategy=numpyro.infer.init_to_median,
+        init_strategy=init_strat,
         max_tree_depth=max_tree_depth,
         step_size=step_size)
     mcmc = numpyro.infer.MCMC(nuts_kernel,
@@ -316,6 +320,7 @@ def get_reference_sample_posterior_full_field(
     chain_method='parallel',
     max_tree_depth=6,
     step_size=1e-2,
+    init_strat=numpyro.infer.init_to_value,
     key=None,
 ):
   """ Full field posterior p(theta|x=m_data).
@@ -361,7 +366,10 @@ def get_reference_sample_posterior_full_field(
         Max depth of the binary tree created during the doubling scheme
         of NUTS sampler, by default 6
     step_size : float
-         Size of a single step, by default 1e-2
+        Size of a single step, by default 1e-2
+    init_strat : callable
+        Sampler initialization Strategies.
+        See https://num.pyro.ai/en/stable/utilities.html#init-strategy
     key : PRNG key
         Only needed if run_mcmc=True, by default None
 
@@ -388,7 +396,7 @@ def get_reference_sample_posterior_full_field(
 
     nuts_kernel = numpyro.infer.NUTS(
         model=observed_model_reparam,
-        init_strategy=numpyro.infer.init_to_median,
+        init_strategy=init_strat,
         max_tree_depth=max_tree_depth,
         step_size=step_size)
     mcmc = numpyro.infer.MCMC(nuts_kernel,

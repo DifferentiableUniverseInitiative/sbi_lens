@@ -1,6 +1,8 @@
 import tensorflow_datasets as tfds
 import tensorflow as tf
 import tensorflow_probability as tfp
+from pathlib import Path
+import numpy as np
 
 tfp = tfp.substrates.jax
 tfd = tfp.distributions
@@ -55,77 +57,54 @@ class LensingLogNormalDataset(tfds.core.GeneratorBasedBuilder):
       '0.0.1': 'Initial release.',
   }
   BUILDER_CONFIGS = [
-      LensingLogNormalDatasetConfig(
-          name="toy_model_without_noise_score_density",
-          N=256,
-          map_size=10,
-          gal_per_arcmin2=30,
-          sigma_e=0.2,
-          nbins=5,
-          a=2,
-          b=0.68,
-          z0=0.11,
-          model_type='lognormal',
-          lognormal_shifts=None,
-          proposal=False,
-          score_type='density',
-          with_noise=False),
-      LensingLogNormalDatasetConfig(name="toy_model_with_noise_score_density",
-                                    N=256,
-                                    map_size=10,
-                                    gal_per_arcmin2=30,
-                                    sigma_e=0.2,
-                                    nbins=5,
-                                    a=2,
-                                    b=0.68,
-                                    z0=0.11,
-                                    model_type='lognormal',
-                                    lognormal_shifts=None,
-                                    proposal=False,
-                                    score_type='density',
-                                    with_noise=True),
-      LensingLogNormalDatasetConfig(name="year_1_with_noise_score_density",
-                                    N=256,
-                                    map_size=10,
-                                    gal_per_arcmin2=10,
-                                    sigma_e=0.26,
-                                    nbins=5,
-                                    a=2,
-                                    b=0.78,
-                                    z0=0.13,
-                                    model_type='lognormal',
-                                    lognormal_shifts=None,
-                                    proposal=True,
-                                    score_type='density',
-                                    with_noise=True),
-      LensingLogNormalDatasetConfig(name="year_10_with_noise_score_density",
-                                    N=256,
-                                    map_size=10,
-                                    gal_per_arcmin2=27,
-                                    sigma_e=0.26,
-                                    nbins=5,
-                                    a=2,
-                                    b=0.68,
-                                    z0=0.11,
-                                    model_type='lognormal',
-                                    lognormal_shifts='LSSTY10',
-                                    proposal=True,
-                                    score_type='density',
-                                    with_noise=True),
-      LensingLogNormalDatasetConfig(name="year_10_without_noise_score_density",
-                                    N=256,
-                                    map_size=10,
-                                    gal_per_arcmin2=27,
-                                    sigma_e=0.26,
-                                    nbins=5,
-                                    a=2,
-                                    b=0.68,
-                                    z0=0.11,
-                                    model_type='lognormal',
-                                    lognormal_shifts='LSSTY10',
-                                    proposal=False,
-                                    score_type='density',
-                                    with_noise=False),
+    LensingLogNormalDatasetConfig(
+      name="year_10_with_noise_score_density",
+      N=256,
+      map_size=10,
+      gal_per_arcmin2=27,
+      sigma_e=0.26,
+      nbins=5,
+      a=2,
+      b=0.68,
+      z0=0.11,
+      model_type='lognormal',
+      lognormal_shifts='LSSTY10',
+      proposal=False,
+      score_type='density',
+      with_noise=True
+    ),
+    LensingLogNormalDatasetConfig(
+      name="year_10_without_noise_score_density",
+      N=256,
+      map_size=10,
+      gal_per_arcmin2=27,
+      sigma_e=0.26,
+      nbins=5,
+      a=2,
+      b=0.68,
+      z0=0.11,
+      model_type='lognormal',
+      lognormal_shifts='LSSTY10',
+      proposal=False,
+      score_type='density',
+      with_noise=False
+    ),
+    LensingLogNormalDatasetConfig(
+      name="year_10_with_noise_score_density_proposal",
+      N=256,
+      map_size=10,
+      gal_per_arcmin2=27,
+      sigma_e=0.26,
+      nbins=5,
+      a=2,
+      b=0.68,
+      z0=0.11,
+      model_type='lognormal',
+      lognormal_shifts='LSSTY10',
+      proposal=True,
+      score_type='density',
+      with_noise=True
+    ),
   ]
 
   def _info(self) -> tfds.core.DatasetInfo:
@@ -137,10 +116,10 @@ class LensingLogNormalDataset(tfds.core.GeneratorBasedBuilder):
         features=tfds.features.FeaturesDict({
             'simulation':
             tfds.features.Tensor(shape=[
-                self.builder_config.N, self.builder_config.N,
+                self.builder_config.N,
+                self.builder_config.N,
                 self.builder_config.nbins
-            ],
-                                 dtype=tf.float32),
+            ], dtype=tf.float32),
             'theta':
             tfds.features.Tensor(shape=[6], dtype=tf.float32),
             'score':
@@ -161,33 +140,59 @@ class LensingLogNormalDataset(tfds.core.GeneratorBasedBuilder):
 
   def _generate_examples(self, size):
     """Yields examples."""
+    bs = 20
+    if self.builder_config.proposal == True:
+      SOURCE_FILE = Path(__file__)
+      SOURCE_DIR = SOURCE_FILE.parent
+      ROOT_DIR = SOURCE_DIR.parent.resolve()
+      DATA_DIR = ROOT_DIR / "data"
 
-    model = partial(lensingLogNormal, self.builder_config.N,
+      thetas = np.load(DATA_DIR / "posterior_power_spectrum__"
+                      "{}N_{}ms_{}gpa_{}se.npy".format(
+                          self.builder_config.N,
+                          self.builder_config.map_size,
+                          self.builder_config.gal_per_arcmin2,
+                          self.builder_config.sigma_e
+                      )
+      )
+      thetas = thetas.reshape([-1, bs, 6])
+    else:
+        thetas = np.array([None]).repeat(size // bs)
+
+    if size > len(thetas):
+      size = len(thetas)
+
+    model = partial(lensingLogNormal,
+                    self.builder_config.N,
                     self.builder_config.map_size,
                     self.builder_config.gal_per_arcmin2,
-                    self.builder_config.sigma_e, self.builder_config.nbins,
-                    self.builder_config.a, self.builder_config.b,
-                    self.builder_config.z0, self.builder_config.model_type,
+                    self.builder_config.sigma_e,
+                    self.builder_config.nbins,
+                    self.builder_config.a,
+                    self.builder_config.b,
+                    self.builder_config.z0,
+                    self.builder_config.model_type,
                     self.builder_config.lognormal_shifts,
                     self.builder_config.with_noise)
 
     @jax.jit
-    def get_batch(key):
+    def get_batch(key, thetas):
       (_, samples), scores = get_samples_and_scores(
           model=model,
           key=key,
           batch_size=bs,
           score_type=self.builder_config.score_type,
-          with_noise=self.builder_config.with_noise)
+          thetas=thetas,
+          with_noise=self.builder_config.with_noise
+      )
 
       return samples['y'], samples['theta'], scores
 
     master_key = jax.random.PRNGKey(2948570986789)
 
-    bs = 20
     for i in range(size // bs):
       key, master_key = jax.random.split(master_key)
-      simu, theta, score = get_batch(key)
+      simu, theta, score = get_batch(key, thetas[i])
 
       for j in range(bs):
         yield '{}-{}'.format(i, j), {

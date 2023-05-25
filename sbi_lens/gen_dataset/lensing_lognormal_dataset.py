@@ -158,6 +158,7 @@ class LensingLogNormalDataset(tfds.core.GeneratorBasedBuilder):
       size_thetas = len(thetas)
       thetas = thetas.reshape([-1, bs, 6])
     else:
+        size_thetas = size
         thetas = np.array([None]).repeat(size // bs)
 
     if size > size_thetas:

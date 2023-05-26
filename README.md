@@ -16,9 +16,6 @@ pip install git+https://github.com/DifferentiableUniverseInitiative/sbi_lens.git
 
 
 ``` python
-from functools import partial
-from jax.random import PRNGKey
-from numpyro.handlers import trace, seed
 
 # load lsst year 10 settings 
 from sbi_lens.config import config_lsst_y_10

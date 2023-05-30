@@ -23,6 +23,7 @@ setup(
         'lenstools>=1.2',
         'astropy>=5.2.2',
         'optax>=0.1.4',
-        'scikit-learn>=1.2.0'
+        'scikit-learn>=1.2.0',
+        'wheel'
     ],
 )

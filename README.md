@@ -73,6 +73,15 @@ Check out a full example here: [![colab link](https://colab.research.google.com/
 
 # Contributors
 
-# Licence
+Thanks goes to these wonderful people ([emoji key](https://allcontributors.org/docs/en/emoji-key)):
 
-MIT
+
+<table>
+  <tr>
+    <td align="center"><a href="https://aboucaud.github.io"><img src="https://avatars0.githubusercontent.com/u/3065310?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Alexandre Boucaud</b></sub></a><br /><a href="https://github.com/DifferentiableUniverseInitiative/sbi_lens/commits?author=aboucaud" title="Code">💻</a></td>
+    <td align="center"><a href="http://flanusse.net"><img src="https://avatars0.githubusercontent.com/u/861591?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Francois Lanusse</b></sub></a><br /><a href="https://github.com/DifferentiableUniverseInitiative/sbi_lens/commits?author=EiffL" title="Code">💻</a></td>
+    <td align="center"><a href="https://www.cosmostat.org/people/denise-lanzieri"><img src="https://avatars.githubusercontent.com/u/72620117?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Denise Lanzieri</b></sub></a><br /><a href="https://github.com/DifferentiableUniverseInitiative/sbi_lens/commits?author=dlanzieri" title="Code">💻</a></td>
+    <td align="center"><a href="https://github.com/Justinezgh"><img src="https://avatars.githubusercontent.com/u/72011736?v=4" width="100px;" alt=""/><br /><sub><b>Justine Zeghal</b></sub></a><br /><a href="https://github.com/DifferentiableUniverseInitiative/sbi_lens/commits?author=Justinezgh" title="Code">💻</a></td>
+  </tr>
+</table>
+

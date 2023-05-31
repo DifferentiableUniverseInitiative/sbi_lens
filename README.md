@@ -84,4 +84,3 @@ Thanks goes to these wonderful people ([emoji key](https://allcontributors.org/d
     <td align="center"><a href="https://github.com/Justinezgh"><img src="https://avatars.githubusercontent.com/u/72011736?v=4" width="100px;" alt=""/><br /><sub><b>Justine Zeghal</b></sub></a><br /><a href="https://github.com/DifferentiableUniverseInitiative/sbi_lens/commits?author=Justinezgh" title="Code">💻</a></td>
   </tr>
 </table>
-

@@ -4,7 +4,7 @@ import pytest
 import tensorflow_probability as tfp
 from numpy.testing import assert_allclose, assert_equal
 
-from sbi_lens.normflow.bijectors import MixtureAffineSigmoidBijector
+from sbi_lens.normflow.bijectors.bijectors import MixtureAffineSigmoidBijector
 
 xfail = pytest.mark.xfail
 tfp = tfp.substrates.jax

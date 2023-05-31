@@ -1,4 +1,11 @@
 <h1 align='center'>sbi_lens</h1>
+
+<center>
+
+[![CI Test](https://github.com/DifferentiableUniverseInitiative/sbi_lens/workflows/Python%20package/badge.svg)]() [![black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black) [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://github.com/DifferentiableUniverseInitiative/sbi_lens/blob/main/LICENSE) [![All Contributors](https://img.shields.io/badge/all_contributors-4-orange.svg?)](https://github.com/DifferentiableUniverseInitiative/sbi_lens/graphs/contributors)
+
+</center>
+
 <h2 align='center'>JAX-based log-normal lensing simulation package.</h2>
 
 **sbi_lens** provides a diferentiable log-normal mass map simulator with 5 tomographic redshift bins and 6 cosmological parameters to infer ($\Omega_c, \Omega_b, \sigma_8, n_s, w_0, h_0$). The shift parameter is computed with [CosMomentum](https://github.com/OliverFHD/CosMomentum) and depends on $\Omega_c, \sigma_8, w_0$.

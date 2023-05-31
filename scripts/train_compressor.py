@@ -176,16 +176,16 @@ store_loss = []
 for batch in tqdm(range(total_steps + 1)):
     ex = next(ds_train)
     if not jnp.isnan(ex["simulation"]).any():
-        l, parameters_compressor, opt_state_c, opt_state_resnet = update(
+        batch_loss, parameters_compressor, opt_state_c, opt_state_resnet = update(
             model_params=parameters_compressor,
             opt_state=opt_state_c,
             theta=ex["theta"],
             x=ex["simulation"],
             state_resnet=opt_state_resnet,
         )
-        store_loss.append(l)
+        store_loss.append(batch_loss)
 
-        if jnp.isnan(l):
+        if jnp.isnan(batch_loss):
             print("NaN Loss")
             break
 

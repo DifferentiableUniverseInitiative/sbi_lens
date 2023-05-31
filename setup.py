@@ -4,7 +4,7 @@ setup(
     name="sbi_lens",
     version="0.0.1",
     url="https://github.com/DifferentiableUniverseInitiative/sbi_lens",
-    description="Weak lensing differentiable simulator for Likelihood-free inference applications",
+    description="JAX-based log-normal lensing simulation package",
     packages=find_packages(),
     package_dir={"sbi_lens": "sbi_lens"},
     package_data={

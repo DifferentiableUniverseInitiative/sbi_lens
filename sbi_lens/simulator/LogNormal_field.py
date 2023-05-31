@@ -242,9 +242,9 @@ def lensingLogNormal(
         return cov_mat
 
     cov_mat = fill_cov_mat(power.reshape(-1, len(cell_tab)))
-    l, A = jnp.linalg.eigh(cov_mat)
+    eigval, A = jnp.linalg.eigh(cov_mat)
     L = jax.vmap(lambda M, v: M.dot(jnp.diag(jnp.sqrt(jnp.clip(v, a_min=0))).dot(M.T)))(
-        A, l
+        A, eigval
     )
     L = L.reshape([N, N, nbins, nbins])
     L = L.at[0, 0].set(jnp.zeros((nbins, nbins)))

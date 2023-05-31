@@ -13,7 +13,7 @@ setup(
     },
     include_package_data=True,
     install_requires=[
-        'numpy>=1.23.5',
+        'numpy>=1.22.4',
         'jax>=0.4.1',
         'tensorflow_probability>=0.19.0',
         'dm-haiku>=0.0.9',

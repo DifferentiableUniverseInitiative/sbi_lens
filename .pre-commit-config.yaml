@@ -14,6 +14,3 @@ repos:
     rev: 23.3.0
     hooks:
       - id: black
-
-# Ruff's pre-commit hook should run before Black, isort, and other formatting 
-# tools, as Ruff's autofix behavior can output code changes that require reformatting.

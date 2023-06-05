@@ -2,63 +2,65 @@ import jax
 import jax.numpy as jnp
 import optax
 from functools import partial
+import tensorflow_probability as tfp
+
+tfd = tfp.distributions
+
 
 class TrainModel():
 
   def loss_mse(self, params, theta, x, state_resnet):
 
-    y, opt_state_resnet = self.compressor.apply(
-      params,
-      state_resnet,
-      None,
-      x
-    )
+    y, opt_state_resnet = self.compressor.apply(params, state_resnet, None, x)
 
     loss = jnp.mean(jnp.sum((y - theta)**2, axis=1))
 
     return loss, opt_state_resnet
 
+  def loss_mae(self, params, theta, x, state_resnet):
+
+    y, opt_state_resnet = self.compressor.apply(params, state_resnet, None, x)
+
+    loss = jnp.mean(jnp.sum(jnp.absolute(y - theta), axis=1))
+
+    return loss, opt_state_resnet
+
+  def loss_gnll(self, params, theta, x, state_resnet, dim):
+
+    y, opt_state_resnet = self.compressor.apply(params, state_resnet, None, x)
+    gmu = y[..., :dim]
+    gtril = y[..., dim:]
+
+    log_prob = tfd.MultivariateNormalTriL(
+        loc=gmu,
+        scale_tril=tfp.bijectors.FillScaleTriL(
+            diag_bijector=tfp.bijectors.Softplus())(gtril))
+
+    return -jnp.mean(log_prob), opt_state_resnet
+
   def loss_vmim(self, params, theta, x, state_resnet):
 
-    y, opt_state_resnet = self.compressor.apply(
-      params,
-      state_resnet,
-      None,
-      x
-    )
-    log_prob = self.nf.apply(
-        params,
-        theta,
-        y)
+    y, opt_state_resnet = self.compressor.apply(params, state_resnet, None, x)
+    log_prob = self.nf.apply(params, theta, y)
 
     return -jnp.mean(log_prob), opt_state_resnet
 
   def loss_nll(self, params, theta, x, _):
 
-    y, _ = self.compressor.apply(
-      self.info_compressor[0],
-      self.info_compressor[1],
-      None,
-      x
-    )
-    log_prob = self.nf.apply(
-        params,
-        theta,
-        y
-    )
+    y, _ = self.compressor.apply(self.info_compressor[0],
+                                 self.info_compressor[1], None, x)
+    log_prob = self.nf.apply(params, theta, y)
 
     return -jnp.mean(log_prob), _
 
-  def __init__(
-    self,
-    compressor,
-    nf,
-    optimizer,
-    loss_name,
-    nb_pixels,
-    nb_bins,
-    info_compressor=None
-  ):
+  def __init__(self,
+               compressor,
+               nf,
+               optimizer,
+               loss_name,
+               nb_pixels,
+               nb_bins,
+               info_compressor=None):
 
     self.compressor = compressor
     self.nf = nf
@@ -68,38 +70,31 @@ class TrainModel():
 
     if loss_name == 'train_compressor_mse':
       self.loss = self.loss_mse
+    elif loss_name == 'train_compressor_mae':
+      self.loss = self.loss_mae
+    elif loss_name == 'train_compressor_gnll':
+      self.loss = self.loss_gnll
     elif loss_name == 'train_compressor_vmim':
       self.loss = self.loss_vmim
     elif loss_name == 'loss_for_sbi':
-        if info_compressor==None:
-            raise NotImplementedError
-        else:
-            self.info_compressor = info_compressor
-            self.loss = self.loss_nll
+      if info_compressor == None:
+        raise NotImplementedError
+      else:
+        self.info_compressor = info_compressor
+        self.loss = self.loss_nll
 
-  @partial(jax.jit, static_argnums=(0,))
-  def update(
-    self,
-    model_params,
-    opt_state,
-    theta,
-    x,
-    state_resnet=None
-  ):
+  @partial(jax.jit, static_argnums=(0, ))
+  def update(self, model_params, opt_state, theta, x, state_resnet=None, dim=None):
 
-    (loss, opt_state_resnet), grads = jax.value_and_grad(
-      self.loss,
-      has_aux=True
-    )(model_params, theta, x, state_resnet)
+    (loss,
+     opt_state_resnet), grads = jax.value_and_grad(self.loss,
+                                                   has_aux=True)(model_params,
+                                                                 theta, x,
+                                                                 state_resnet,
+                                                                 dim )
 
-    updates, new_opt_state = self.optimizer.update(
-      grads,
-      opt_state
-    )
+    updates, new_opt_state = self.optimizer.update(grads, opt_state)
 
-    new_params = optax.apply_updates(
-      model_params,
-      updates
-    )
+    new_params = optax.apply_updates(model_params, updates)
 
     return loss, new_params, new_opt_state, opt_state_resnet

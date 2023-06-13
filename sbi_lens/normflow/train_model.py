@@ -2,7 +2,7 @@ import jax
 import jax.numpy as jnp
 import optax
 from functools import partial
-import tensorflow_probability as tfp
+from tensorflow_probability.substrates import jax as tfp
 
 tfd = tfp.distributions
 
@@ -25,11 +25,11 @@ class TrainModel():
 
     return loss, opt_state_resnet
 
-  def loss_gnll(self, params, theta, x, state_resnet, dim):
-
+  def loss_gnll(self, params, theta, x, state_resnet):
+    #dim=len(theta)
     y, opt_state_resnet = self.compressor.apply(params, state_resnet, None, x)
-    gmu = y[..., :dim]
-    gtril = y[..., dim:]
+    gmu = y[..., :6]
+    gtril = y[..., 6:]
 
     log_prob = tfd.MultivariateNormalTriL(
         loc=gmu,
@@ -83,15 +83,14 @@ class TrainModel():
         self.info_compressor = info_compressor
         self.loss = self.loss_nll
 
-  @partial(jax.jit, static_argnums=(0, ))
-  def update(self, model_params, opt_state, theta, x, state_resnet=None, dim=None):
+  #@partial(jax.jit, static_argnums=(0,))
+  def update(self, model_params, opt_state, theta, x, state_resnet=None):
 
     (loss,
      opt_state_resnet), grads = jax.value_and_grad(self.loss,
                                                    has_aux=True)(model_params,
                                                                  theta, x,
-                                                                 state_resnet,
-                                                                 dim )
+                                                                 state_resnet)
 
     updates, new_opt_state = self.optimizer.update(grads, opt_state)
 

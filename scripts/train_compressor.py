@@ -44,7 +44,7 @@ print('######## CONFIG LSST Y 10 ########')
 print('######## LOSS FUNCTION: ########', args.loss)
 
 dim = 6
-aug_dim = dim * (dim * (dim + 1) / 2)
+aug_dim = int(dim * (dim + 1) / 2)
 
 N = config_lsst_y_10.N
 map_size = config_lsst_y_10.map_size
@@ -159,7 +159,7 @@ print('######## LOAD SIMULATIONS ########')
 
 ds = tfds.load('LensingLogNormalDataset/year_10_without_noise_score_density',
                split='train',
-               data_dir = DATA_DIR / 'tensorflow_dataset')
+               data_dir=DATA_DIR / 'tensorflow_dataset')
 
 ds = ds.repeat()
 ds = ds.shuffle(1000)
@@ -168,8 +168,8 @@ ds = ds.batch(128)
 ds = ds.prefetch(tf.data.experimental.AUTOTUNE)
 ds_train = iter(tfds.as_numpy(ds))
 
-update = jax.jit(model_compressor.update)
-
+#update = jax.jit(model_compressor.update)
+update = model_compressor.update
 print('######## TRAIN ########')
 
 store_loss = []
@@ -181,8 +181,7 @@ for batch in tqdm(range(total_steps + 1)):
         opt_state=opt_state_c,
         theta=ex['theta'],
         x=ex['simulation'],
-        state_resnet=opt_state_resnet,
-        dim=dim)
+        state_resnet=opt_state_resnet)
     store_loss.append(l)
 
     if jnp.isnan(l):
@@ -209,3 +208,6 @@ with open(
     DATA_DIR / "params_compressor/opt_state_resnet_{}.pkl".format(l_name),
     "wb") as fp:
   pickle.dump(opt_state_resnet, fp)
+
+with open("loss_{}.pkl".format(l_name), "wb") as fp:
+  pickle.dump(jnp.asarray(store_loss), fp)

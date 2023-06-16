@@ -26,17 +26,16 @@ class TrainModel():
     return loss, opt_state_resnet
 
   def loss_gnll(self, params, theta, x, state_resnet):
-    #dim=len(theta)
+    dim=len(theta)
     y, opt_state_resnet = self.compressor.apply(params, state_resnet, None, x)
-    gmu = y[..., :6]
-    gtril = y[..., 6:]
-
-    log_prob = tfd.MultivariateNormalTriL(
+    gmu = y[..., :dim]
+    gtril = y[..., dim:]
+    dist = tfd.MultivariateNormalTriL(
         loc=gmu,
         scale_tril=tfp.bijectors.FillScaleTriL(
             diag_bijector=tfp.bijectors.Softplus())(gtril))
 
-    return -jnp.mean(log_prob), opt_state_resnet
+    return -mean(dist.log_prob(theta)), opt_state_resnet
 
   def loss_vmim(self, params, theta, x, state_resnet):
 

@@ -14,10 +14,8 @@ import haiku as hk
 
 import tensorflow_datasets as tfds
 import tensorflow as tf
+from tensorflow_probability.substrates import jax as tfp
 
-import tensorflow_probability as tfp
-
-tfp = tfp.experimental.substrates.jax
 tfb = tfp.bijectors
 tfd = tfp.distributions
 
@@ -44,7 +42,7 @@ print('######## CONFIG LSST Y 10 ########')
 print('######## LOSS FUNCTION: ########', args.loss)
 
 dim = 6
-aug_dim = int(dim * (dim + 1) / 2)
+aug_dim = int((dim * (dim + 1) / 2)+dim)
 
 N = config_lsst_y_10.N
 map_size = config_lsst_y_10.map_size

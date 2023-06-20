@@ -154,8 +154,7 @@ class LensingLogNormalDataset(tfds.core.GeneratorBasedBuilder):
                           self.builder_config.map_size,
                           self.builder_config.gal_per_arcmin2,
                           self.builder_config.sigma_e
-                      ),
-        allow_pickle=True
+                      )
       )
       # 'thinning'
       nb_sample_min_to_keep = 100_000

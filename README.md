@@ -24,7 +24,7 @@ Note: only LSST year 10 implemented for the moment.
 
 <div align='center'>
   <ul>
-    <summary><h4>Why log-normal simulations rather than normal ones?</h4></summary>
+    <summary><h4>Why log-normal simulations rather than Gaussian ones?</h4></summary>
   </ul>
 </div>
 

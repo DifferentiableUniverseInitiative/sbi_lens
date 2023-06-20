@@ -28,11 +28,10 @@ Note: only LSST year 10 implemented for the moment.
   </ul>
 </div>
 
-Due to the non-linear growth of structures in the universe, the density cosmological field is expecteed to be highly non-Gaussian. Therefore log-normal fields which account for non-Guassianities, provide a more realistic representation of the late-time field. The figure below emphasizes this claim by comparing the posterior obtained from <font color="#FF8F00">power spectrum analysis</font> (which captures only the Gaussian signal) against the one obtained from  <font color="#9AECFF">full field analysis performed through HMC</font> (which extracts the entire signal). 
-
+Due to the non-linear growth of structures in the universe, the density cosmological field is expecteed to be highly non-Gaussian. Therefore log-normal fields which account for non-Guassianities, provide a more realistic representation of the late-time field. The figure below emphasizes this claim by comparing the posterior obtained from power spectrum analysis (which captures only the Gaussian signal) against the one obtained from full field analysis performed through HMC (which extracts the entire signal). 
 
 <p align=center>
-    <img src="img/compare_contour_plot.png" style="width:1000px;">
+    <img src="img/compare_contour_plot.png" style="width:600px;">
 </p>
 
 <hr><hr>

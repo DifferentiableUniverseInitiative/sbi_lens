@@ -147,14 +147,26 @@ class LensingLogNormalDataset(tfds.core.GeneratorBasedBuilder):
       ROOT_DIR = SOURCE_DIR.parent.resolve()
       DATA_DIR = ROOT_DIR / "data"
 
-      thetas = np.load(DATA_DIR / "posterior_power_spectrum__"
+      thetas = np.load(
+        DATA_DIR / "posterior_power_spectrum__"
                       "{}N_{}ms_{}gpa_{}se.npy".format(
                           self.builder_config.N,
                           self.builder_config.map_size,
                           self.builder_config.gal_per_arcmin2,
                           self.builder_config.sigma_e
-                      )
+                      ),
+        allow_pickle=True
       )
+      # 'thinning'
+      nb_sample_min_to_keep = 100_000
+      inds = jax.random.randint(
+        jax.random.PRNGKey(42),
+        (nb_sample_min_to_keep, ),
+        0,
+        thetas.shape[0]
+      )
+      thetas = thetas[inds]
+
       size_thetas = len(thetas)
       thetas = thetas.reshape([-1, bs, 6])
     else:

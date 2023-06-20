@@ -1,18 +1,42 @@
-<h1 align='center'>sbi_lens</h1>
+<div align='center'>
+  <ul>
+    <summary><h1>sbi_lens</h1></summary>
+  </ul>
+</div>
 
 <div align="center">
-    
+
 [![CI Test](https://github.com/DifferentiableUniverseInitiative/sbi_lens/workflows/Python%20package/badge.svg)]() [![black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black) [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://github.com/DifferentiableUniverseInitiative/sbi_lens/blob/main/LICENSE) [![All Contributors](https://img.shields.io/badge/all_contributors-4-orange.svg?)](https://github.com/DifferentiableUniverseInitiative/sbi_lens/graphs/contributors)
 
 </div>
 
 <hr><hr>
 
-<h2 align='center'>JAX-based log-normal lensing simulation package.</h2>
+<div align='center'>
+  <ul>
+    <summary><h2>JAX-based log-normal lensing simulation package.</h2></summary>
+  </ul>
+</div>
 
-**sbi_lens** provides a diferentiable log-normal mass map simulator with 5 tomographic redshift bins and 6 cosmological parameters to infer ($\Omega_c, \Omega_b, \sigma_8, n_s, w_0, h_0$). The shift parameter is computed with [CosMomentum](https://github.com/OliverFHD/CosMomentum) and depends on $\Omega_c, \sigma_8, w_0$.
+`sbi_lens` provides a diferentiable log-normal mass map simulator with 5 tomographic redshift bins and 6 cosmological parameters to infer ($\Omega_c, \Omega_b, \sigma_8, n_s, w_0, h_0$). The shift parameter is computed with [CosMomentum](https://github.com/OliverFHD/CosMomentum) and depends on $\Omega_c, \sigma_8, w_0$.
 
 Note: only LSST year 10 implemented for the moment.
+
+<div align='center'>
+  <ul>
+    <summary><h4>Why log-normal simulations rather than normal ones?</h4></summary>
+  </ul>
+</div>
+
+Due to the non-linear growth of structures in the universe, the density cosmological field is expecteed to be highly non-Gaussian. Therefore log-normal fields which account for non-Guassianities, provide a more realistic representation of the late-time field. The figure below emphasizes this claim by comparing the posterior obtained from <font color="#FF8F00">power spectrum analysis</font> (which captures only the Gaussian signal) against the one obtained from  <font color="#9AECFF">full field analysis performed through HMC</font> (which extracts the entire signal). 
+
+
+<p align=center>
+    <img src="img/compare_contour_plot.png" style="width:1000px;">
+</p>
+
+<hr><hr>
+
 
 # Installation
 
@@ -34,7 +58,6 @@ nbins            = config_lsst_y_10.nbins
 a                = config_lsst_y_10.a
 b                = config_lsst_y_10.b
 z0               = config_lsst_y_10.z0
-
 
 # define lsst year 10 log normal model
 from sbi_lens.simulator.LogNormal_field import lensingLogNormal
@@ -79,11 +102,9 @@ for i in range(5):
 
 Check out a full example here: [![colab link](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1pSjhrOJbVi80RQlsVz2oXhVAtxwBhSbn?usp=sharing)
 
-
 # Contributors
 
 Thanks goes to these wonderful people ([emoji key](https://allcontributors.org/docs/en/emoji-key)):
-
 
 <table>
   <tr>

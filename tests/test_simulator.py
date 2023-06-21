@@ -75,7 +75,7 @@ def test_LogNormalmodel():
             cl_exp, ell = compute_power_spectrum_mass_map(map_size, m_data[q][j])
             cl.append(cl_exp)
 
-        cl_exp_mean = np.mean(np.array(cl), axis=0)
+        cl_exp_mean = jnp.mean(jnp.array(cl), axis=0)
 
         cl_the = compute_power_spectrum_theory(
             sigma_e,

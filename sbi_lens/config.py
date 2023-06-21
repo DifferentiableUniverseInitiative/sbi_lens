@@ -35,8 +35,8 @@ class Config:
       '$w_0$'
     ]
     self.params_name = [
-      'Omega_c',
-      'Omega_b',
+      'omega_c',
+      'omega_b',
       'sigma_8',
       'h_0',
       'n_s',

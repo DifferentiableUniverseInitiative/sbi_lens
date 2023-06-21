@@ -483,24 +483,21 @@ def get_reference_sample_posterior_full_field(
         return theta, m_data
 
 
-def compute_power_spectrum(
-    map_size,
+def compute_power_spectrum_theory(
     sigma_e,
     a,
     b,
     z0,
     gals_per_arcmin2,
     cosmo_params,
-    mass_map,
+    ell,
     with_noise=True,
 ):
-    """Compute the average power spectrum from the maps and the theoric
-    power spectrum given cosmological parameters and redshift distribution.
+    """Compute theoric power spectrum given given cosmological
+    parameters, redshift distribution and multipole bin edges
 
     Parameters
     ----------
-    map_size : int, optional
-        The total angular size area is given by map_size x map_size
     sigma_e : float
         Dispersion of the ellipticity distribution
     a : float
@@ -514,27 +511,17 @@ def compute_power_spectrum(
     cosmo_params : Array (6)
         cosmological parameters in the following order:
         (omega_c, omega_b, sigma_8, h_0, n_s, w_0)
-    mass_map :Array (nb_mass_map, N,N)
-        Lensing convergence maps
+    ell : Array
+        Multipole bin edges
     with_noise : bool, optional
         True if there is noise in the mass_map, by default True
-
     Returns
     -------
-        Theoric power spectrum, the average power spectrum of the mass maps,
-        the uncertainty (variance of the nb_mass_map power spectrums), and ell
-        [Cl_theo, Cl_sample, Cl_lower_uncertainty, Cl_upper_uncertainty, ell]
+        Theoric power spectrum
     """
+
     nbins = 5
     omega_c, omega_b, sigma_8, h_0, n_s, w_0 = cosmo_params
-    N_sample = mass_map.shape[0]
-
-    l_edges_kmap = np.linspace(300, 5000, 128)
-
-    ell = ConvergenceMap(mass_map[0][:, :, 0], angle=map_size * u.deg).cross(
-        ConvergenceMap(mass_map[0][:, :, 0], angle=map_size * u.deg),
-        l_edges=l_edges_kmap,
-    )[0]
 
     # power spectrum from theory
     cosmo = jc.Planck15(
@@ -553,13 +540,48 @@ def compute_power_spectrum(
     cell_theory = jc.angular_cl.angular_cl(cosmo, ell, [tracer])
     cell_noise = jc.angular_cl.noise_cl(ell, [tracer])
 
+    if with_noise:
+        Cl_theo = cell_theory + cell_noise
+    else:
+        Cl_theo = cell_theory
+
+    return Cl_theo
+
+
+def compute_power_spectrum_mass_map(
+    map_size,
+    mass_map
+):
+    """ Compute the power spectrum of the convergence map
+
+    Parameters
+    ----------
+    map_size : int
+        The total angular size area is given by map_size x map_size
+    mass_map : Array (nb_mass_map, N,N)
+        Lensing convergence maps
+
+    Returns
+    -------
+        Power spectrum and ell
+    """
+
+    N_sample = mass_map.shape[0]
+
+    l_edges_kmap = np.linspace(100, 5000, 128)
+
+    ell = ConvergenceMap(mass_map[0][:, :, 0], angle=map_size * u.deg).cross(
+        ConvergenceMap(mass_map[0][:, :, 0], angle=map_size * u.deg),
+        l_edges=l_edges_kmap,
+    )[0]
+
     # power spectrum of the map
     ps_all_sample = []
     for k in range(N_sample):
         m_data = mass_map[k]
         ps = []
 
-        for i, j in itertools.combinations_with_replacement([0, 1, 2, 3, 4], 2):
+        for i, j in itertools.combinations_with_replacement(range(nbins), 2):
             ps_ij = ConvergenceMap(m_data[:, :, i], angle=map_size * u.deg).cross(
                 ConvergenceMap(m_data[:, :, j], angle=map_size * u.deg),
                 l_edges=l_edges_kmap,
@@ -571,9 +593,5 @@ def compute_power_spectrum(
 
     Cl_sample = np.mean(np.array(ps_all_sample), axis=0)
 
-    if with_noise:
-        Cl_theo = cell_theory + cell_noise
-    else:
-        Cl_theo = cell_theory
+    return Cl_sample, ell
 
-    return Cl_theo, Cl_sample, ell

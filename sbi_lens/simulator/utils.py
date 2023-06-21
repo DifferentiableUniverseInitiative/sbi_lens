@@ -584,3 +584,77 @@ def compute_power_spectrum_mass_map(map_size, mass_map):
         ps.append(ps_ij)
 
     return np.array(ps), ell
+
+
+def gaussian_log_likelihood(
+    cosmo_params,
+    mass_map,
+    map_size,
+    sigma_e,
+    a,
+    b,
+    z0,
+    gals_per_arcmin2,
+):
+    """Compute the gaussian likelihood log probrobability
+
+    Parameters
+    ----------
+    cosmo_params : Array
+        cosmological parameters in the following order:
+        (omega_c, omega_b, sigma_8, h_0, n_s, w_0)
+    mass_map : Array (N,N, nbins)
+        Lensing convergence maps
+    map_size : int
+        The total angular size area is given by map_size x map_size
+    sigma_e : float
+        Dispersion of the ellipticity distribution
+    a : float
+        Parameter defining the redshift distribution
+    b : float
+        Parameter defining the redshift distribution
+    z0 : float
+        Parameter defining the redshift distribution
+    gals_per_arcmin2 : int
+        Number of galaxies per arcmin
+    Returns
+    -------
+    log p(mass_map | cosmo_params)
+    """
+
+    # define model
+    nbins = 5
+    f_sky = map_size**2 / 41_253
+
+    nz = jc.redshift.smail_nz(a, b, z0, gals_per_arcmin2=gals_per_arcmin2)
+    nz_bins = subdivide(nz, nbins=nbins, zphot_sigma=0.05)
+
+    omega_c, omega_b, sigma_8, h_0, n_s, w_0 = cosmo_params
+    cosmo = jc.Planck15(
+        Omega_c=omega_c, Omega_b=omega_b, h=h_0, n_s=n_s, sigma8=sigma_8, w0=w_0
+    )
+
+    pl_array, ell = compute_power_spectrum_mass_map(
+        map_size, mass_map  # np.expand_dims(mass_map, 0)
+    )
+
+    cl_obs = np.stack(pl_array)
+
+    # theory power spectrum
+    tracer = jc.probes.WeakLensing(nz_bins, sigma_e=sigma_e)
+    cl_noise = jc.angular_cl.noise_cl(ell, [tracer]).flatten()
+
+    cl, C = jc.angular_cl.gaussian_cl_covariance_and_mean(
+        cosmo, ell, [tracer], f_sky=f_sky, sparse=True
+    )
+
+    C = jc.sparse.to_dense(C)
+
+    likelihood = tfd.MultivariateNormalFullCovariance(
+        cl + cl_noise, covariance_matrix=C
+    )
+
+    # evaluate the observed mass map
+    cl_prob = likelihood.log_prob(cl_obs.flatten())
+
+    return cl_prob

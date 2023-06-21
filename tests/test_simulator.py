@@ -71,8 +71,6 @@ def test_LogNormalmodel():
             cl_the,
             cl_exp,
             _,
-            _,
-            _,
         ) = compute_power_spectrum(
             map_size,
             sigma_e,

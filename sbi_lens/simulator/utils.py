@@ -569,28 +569,11 @@ def compute_power_spectrum(
 
         ps_all_sample.append(ps)
 
-    def fill_lower_and_diag(array, nl):
-        n = int(np.sqrt(len(array) * 2))
-        mask = np.arange(n)[:, None] >= np.arange(n)
-        out = np.zeros((n, n, nl))
-        out[np.stack(mask, axis=1)] = array
-        return out.T
-
-    N = len(ell)
-    Cl_mean_sample = np.mean(np.array(ps_all_sample), axis=0)
-    Cl_sample = fill_lower_and_diag(Cl_mean_sample, N)
-    Cl_mean_theory = fill_lower_and_diag(cell_theory, N)
-    Cl_mean_noise = fill_lower_and_diag(cell_noise, N)
-
-    # uncertainty
-    Cl_lower_uncertainty = np.percentile(np.array(ps_all_sample), 2.5, axis=0)
-    Cl_upper_uncertainty = np.percentile(np.array(ps_all_sample), 97.5, axis=0)
-    Cl_lower_uncertainty = fill_lower_and_diag(Cl_lower_uncertainty, N)
-    Cl_upper_uncertainty = fill_lower_and_diag(Cl_upper_uncertainty, N)
+    Cl_sample = np.mean(np.array(ps_all_sample), axis=0)
 
     if with_noise:
-        Cl_theo = Cl_mean_theory + Cl_mean_noise
+        Cl_theo = cell_theory + cell_noise
     else:
-        Cl_theo = Cl_mean_theory
+        Cl_theo = cell_theory
 
-    return Cl_theo, Cl_sample, Cl_lower_uncertainty, Cl_upper_uncertainty, ell
+    return Cl_theo, Cl_sample, ell

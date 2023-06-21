@@ -555,7 +555,7 @@ def compute_power_spectrum_mass_map(map_size, mass_map):
     ----------
     map_size : int
         The total angular size area is given by map_size x map_size
-    mass_map : Array (nb_mass_map, N,N)
+    mass_map : Array (N,N, nbins)
         Lensing convergence maps
 
     Returns
@@ -564,31 +564,23 @@ def compute_power_spectrum_mass_map(map_size, mass_map):
     """
 
     nbins = 5
-    N_sample = mass_map.shape[0]
 
-    l_edges_kmap = np.linspace(100, 5000, 128)
+    l_edges_kmap = np.arange(100.0, 5000.0, 50.0)
 
-    ell = ConvergenceMap(mass_map[0][:, :, 0], angle=map_size * u.deg).cross(
-        ConvergenceMap(mass_map[0][:, :, 0], angle=map_size * u.deg),
+    ell = ConvergenceMap(mass_map[:, :, 0], angle=map_size * u.deg).cross(
+        ConvergenceMap(mass_map[:, :, 0], angle=map_size * u.deg),
         l_edges=l_edges_kmap,
     )[0]
 
     # power spectrum of the map
-    ps_all_sample = []
-    for k in range(N_sample):
-        m_data = mass_map[k]
-        ps = []
+    ps = []
 
-        for i, j in itertools.combinations_with_replacement(range(nbins), 2):
-            ps_ij = ConvergenceMap(m_data[:, :, i], angle=map_size * u.deg).cross(
-                ConvergenceMap(m_data[:, :, j], angle=map_size * u.deg),
-                l_edges=l_edges_kmap,
-            )[1]
+    for i, j in itertools.combinations_with_replacement(range(nbins), 2):
+        ps_ij = ConvergenceMap(mass_map[:, :, i], angle=map_size * u.deg).cross(
+            ConvergenceMap(mass_map[:, :, j], angle=map_size * u.deg),
+            l_edges=l_edges_kmap,
+        )[1]
 
-            ps.append(ps_ij)
+        ps.append(ps_ij)
 
-        ps_all_sample.append(ps)
-
-    Cl_sample = np.mean(np.array(ps_all_sample), axis=0)
-
-    return Cl_sample, ell
+    return np.array(ps), ell

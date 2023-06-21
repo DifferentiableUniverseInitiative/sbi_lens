@@ -22,7 +22,7 @@ def test_LogNormalmodel():
     b = config_lsst_y_10.b
     z0 = config_lsst_y_10.z0
 
-    params_name = config_lsst_y_10.params_name
+    params_name = ["omega_c", "omega_b", "sigma_8", "h_0", "n_s", "w_0"]
 
     # define model LSST Y 10
     model = partial(
@@ -70,7 +70,12 @@ def test_LogNormalmodel():
     m_data, cosmo_params = get_batch(jax.random.split(jax.random.PRNGKey(14), N_sample))
 
     for q in range(N_sample):
-        cl_exp, ell = compute_power_spectrum_mass_map(map_size, m_data[q])
+        cl = []
+        for j in range(m_data.shape[0]):
+            cl_exp, ell = compute_power_spectrum_mass_map(map_size, m_data[q])
+            cl.append(cl_exp)
+
+        cl_exp_mean = np.mean(np.array(cl), axis=0)
 
         cl_the = compute_power_spectrum_theory(
             sigma_e,
@@ -78,9 +83,9 @@ def test_LogNormalmodel():
             b,
             z0,
             gals_per_arcmin2,
-            cosmo_params[q],
+            cosmo_params[q][j],
             ell,
             with_noise=True,
         )
 
-        assert_allclose(cl_exp, cl_the, atol=1e-8)
+        assert_allclose(cl_exp_mean, cl_the, atol=1e-8)

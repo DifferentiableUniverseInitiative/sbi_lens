@@ -17,6 +17,7 @@ class Config:
     w_0
   ):
 
+    self.nb_cosmo_params = 6
     self.N = N
     self.map_size = map_size
     self.sigma_e = sigma_e
@@ -25,13 +26,21 @@ class Config:
     self.a = a
     self.b = b
     self.z0 = z0
-    self.params_name = [
+    self.params_name_latex = [
       '$\Omega_c$',
       '$\Omega_b$',
       '$\sigma_8$',
       '$h_0$',
       '$n_s$',
       '$w_0$'
+    ]
+    self.params_name = [
+      'Omega_c',
+      'Omega_b',
+      'sigma_8',
+      'h_0',
+      'n_s',
+      'w_0'
     ]
     self.truth = [
       omega_c,
@@ -41,6 +50,7 @@ class Config:
       n_s,
       w_0
     ]
+
 
 config_lsst_y_10 = Config(
   N=256,

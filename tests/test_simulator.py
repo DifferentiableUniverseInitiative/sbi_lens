@@ -72,7 +72,7 @@ def test_LogNormalmodel():
     for q in range(N_sample):
         cl = []
         for j in range(m_data.shape[0]):
-            cl_exp, ell = compute_power_spectrum_mass_map(map_size, m_data[q])
+            cl_exp, ell = compute_power_spectrum_mass_map(map_size, m_data[q][j])
             cl.append(cl_exp)
 
         cl_exp_mean = np.mean(np.array(cl), axis=0)
@@ -83,7 +83,7 @@ def test_LogNormalmodel():
             b,
             z0,
             gals_per_arcmin2,
-            cosmo_params[q][j],
+            cosmo_params[q],
             ell,
             with_noise=True,
         )

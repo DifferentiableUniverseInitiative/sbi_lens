@@ -548,11 +548,8 @@ def compute_power_spectrum_theory(
     return Cl_theo
 
 
-def compute_power_spectrum_mass_map(
-    map_size,
-    mass_map
-):
-    """ Compute the power spectrum of the convergence map
+def compute_power_spectrum_mass_map(map_size, mass_map):
+    """Compute the power spectrum of the convergence map
 
     Parameters
     ----------
@@ -566,6 +563,7 @@ def compute_power_spectrum_mass_map(
         Power spectrum and ell
     """
 
+    nbins = 5
     N_sample = mass_map.shape[0]
 
     l_edges_kmap = np.linspace(100, 5000, 128)
@@ -594,4 +592,3 @@ def compute_power_spectrum_mass_map(
     Cl_sample = np.mean(np.array(ps_all_sample), axis=0)
 
     return Cl_sample, ell
-

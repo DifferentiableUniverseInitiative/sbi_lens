@@ -6,7 +6,10 @@ from numpy.testing import assert_allclose
 from numpyro.handlers import condition, seed, trace
 from sbi_lens.config import config_lsst_y_10
 from sbi_lens.simulator.LogNormal_field import lensingLogNormal
-from sbi_lens.simulator.utils import compute_power_spectrum_mass_map, compute_power_spectrum_theory
+from sbi_lens.simulator.utils import (
+    compute_power_spectrum_mass_map,
+    compute_power_spectrum_theory,
+)
 
 
 def test_LogNormalmodel():
@@ -67,11 +70,7 @@ def test_LogNormalmodel():
     m_data, cosmo_params = get_batch(jax.random.split(jax.random.PRNGKey(14), N_sample))
 
     for q in range(N_sample):
-
-        cl_exp, ell = compute_power_spectrum_mass_map(
-            map_size,
-            m_data[q]
-        )
+        cl_exp, ell = compute_power_spectrum_mass_map(map_size, m_data[q])
 
         cl_the = compute_power_spectrum_theory(
             sigma_e,

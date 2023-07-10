@@ -117,6 +117,216 @@ def get_samples_and_scores(
     return jax.vmap(jax.value_and_grad(log_prob_fn, has_aux=True))(thetas, keys)
 
 
+def _lensingPS(map_size, sigma_e, a, b, z0, gals_per_arcmin2, ell, nbins):
+    # Field parameters
+    f_sky = map_size**2 / 41_253
+    nz = jc.redshift.smail_nz(a, b, z0, gals_per_arcmin2=gals_per_arcmin2)
+    nz_bins = subdivide(nz, nbins=nbins, zphot_sigma=0.05)
+
+    # Cosmological parameters
+    omega_c = sample("omega_c", dist.TruncatedNormal(0.2664, 0.2, low=0))
+    omega_b = sample("omega_b", dist.Normal(0.0492, 0.006))
+    sigma_8 = sample("sigma_8", dist.Normal(0.831, 0.14))
+    h_0 = sample("h_0", dist.Normal(0.6727, 0.063))
+    n_s = sample("n_s", dist.Normal(0.9645, 0.08))
+    w_0 = sample("w_0", dist.TruncatedNormal(-1.0, 0.9, low=-2.0, high=-0.3))
+
+    cosmo = jc.Planck15(
+        Omega_c=omega_c, Omega_b=omega_b, h=h_0, n_s=n_s, sigma8=sigma_8, w0=w_0
+    )
+
+    tracer = jc.probes.WeakLensing(nz_bins, sigma_e=sigma_e)
+
+    # Calculate power spectrum
+    cl_noise = jc.angular_cl.noise_cl(ell, [tracer]).flatten()
+    cl, C = jc.angular_cl.gaussian_cl_covariance_and_mean(
+        cosmo, ell, [tracer], f_sky=f_sky, sparse=True
+    )
+
+    # Compute precision matrix
+    P = jc.sparse.to_dense(jc.sparse.inv(jax.lax.stop_gradient(C)))
+    C = jc.sparse.to_dense(C)
+
+    cl = sample(
+        "cl",
+        dist.MultivariateNormal(cl + cl_noise, precision_matrix=P, covariance_matrix=C),
+    )
+
+    return cl
+
+
+def compute_power_spectrum_theory(
+    nbins,
+    sigma_e,
+    a,
+    b,
+    z0,
+    gals_per_arcmin2,
+    cosmo_params,
+    ell,
+    with_noise=True,
+):
+    """Compute theoric power spectrum given given cosmological
+    parameters, redshift distribution and multipole bin edges
+
+    Parameters
+    ----------
+    n_bins: int
+        Number of redshift bins
+    sigma_e : float
+        Dispersion of the ellipticity distribution
+    a : float
+        Parameter defining the redshift distribution
+    b : float
+        Parameter defining the redshift distribution
+    z0 : float
+        Parameter defining the redshift distribution
+    gals_per_arcmin2 : int
+        Number of galaxies per arcmin
+    cosmo_params : Array (6)
+        cosmological parameters in the following order:
+        (omega_c, omega_b, sigma_8, h_0, n_s, w_0)
+    ell : Array
+        Multipole bin edges
+    with_noise : bool, optional
+        True if there is noise in the mass_map, by default True
+    Returns
+    -------
+        Theoric power spectrum
+    """
+
+    omega_c, omega_b, sigma_8, h_0, n_s, w_0 = cosmo_params
+
+    # power spectrum from theory
+    cosmo = jc.Planck15(
+        Omega_c=omega_c,
+        Omega_b=omega_b,
+        h=h_0,
+        n_s=n_s,
+        sigma8=sigma_8,
+        w0=w_0,
+    )
+
+    nz = jc.redshift.smail_nz(a, b, z0, gals_per_arcmin2=gals_per_arcmin2)
+    nz_bins = subdivide(nz, nbins=nbins, zphot_sigma=0.05)
+    tracer = jc.probes.WeakLensing(nz_bins, sigma_e=sigma_e)
+
+    cell_theory = jc.angular_cl.angular_cl(cosmo, ell, [tracer])
+    cell_noise = jc.angular_cl.noise_cl(ell, [tracer])
+
+    if with_noise:
+        Cl_theo = cell_theory + cell_noise
+    else:
+        Cl_theo = cell_theory
+
+    return Cl_theo
+
+
+def compute_power_spectrum_mass_map(nbins, map_size, mass_map):
+    """Compute the power spectrum of the convergence map
+
+    Parameters
+    ----------
+    n_bins: int
+        Number of redshift bins
+    map_size : int
+        The total angular size area is given by map_size x map_size
+    mass_map : Array (N,N, nbins)
+        Lensing convergence maps
+
+    Returns
+    -------
+        Power spectrum and ell
+    """
+
+    l_edges_kmap = np.arange(100.0, 5000.0, 50.0)
+
+    ell = ConvergenceMap(mass_map[:, :, 0], angle=map_size * u.deg).cross(
+        ConvergenceMap(mass_map[:, :, 0], angle=map_size * u.deg),
+        l_edges=l_edges_kmap,
+    )[0]
+
+    # power spectrum of the map
+    ps = []
+
+    for i, j in itertools.combinations_with_replacement(range(nbins), 2):
+        ps_ij = ConvergenceMap(mass_map[:, :, i], angle=map_size * u.deg).cross(
+            ConvergenceMap(mass_map[:, :, j], angle=map_size * u.deg),
+            l_edges=l_edges_kmap,
+        )[1]
+
+        ps.append(ps_ij)
+
+    return np.array(ps), ell
+
+
+def gaussian_log_likelihood(
+    cosmo_params, mass_map, nbins, map_size, sigma_e, a, b, z0, gals_per_arcmin2
+):
+    """Compute the gaussian likelihood log probrobability
+
+    Parameters
+    ----------
+    cosmo_params : Array
+        cosmological parameters in the following order:
+        (omega_c, omega_b, sigma_8, h_0, n_s, w_0)
+    mass_map : Array (N,N, nbins)
+        Lensing convergence maps
+    n_bins: int
+        Number of redshift bins
+    map_size : int
+        The total angular size area is given by map_size x map_size
+    sigma_e : float
+        Dispersion of the ellipticity distribution
+    a : float
+        Parameter defining the redshift distribution
+    b : float
+        Parameter defining the redshift distribution
+    z0 : float
+        Parameter defining the redshift distribution
+    gals_per_arcmin2 : int
+        Number of galaxies per arcmin
+    Returns
+    -------
+    log p(mass_map | cosmo_params)
+    """
+
+    pl_array, ell = compute_power_spectrum_mass_map(nbins, map_size, mass_map)
+
+    cl_obs = np.stack(pl_array)
+
+    model_lensingPS = partial(
+        _lensingPS,
+        map_size=map_size,
+        sigma_e=sigma_e,
+        a=a,
+        b=b,
+        z0=z0,
+        gals_per_arcmin2=gals_per_arcmin2,
+        ell=ell,
+        nbins=5,
+    )
+
+    # Now we condition the model on obervations
+    cond_model = condition(
+        model_lensingPS,
+        {
+            "cl": cl_obs.flatten(),
+            "omega_c": cosmo_params[0],
+            "omega_b": cosmo_params[1],
+            "sigma_8": cosmo_params[2],
+            "h_0": cosmo_params[3],
+            "n_s": cosmo_params[4],
+            "w_0": cosmo_params[5],
+        },
+    )
+
+    model_trace = trace(cond_model).get_trace()
+    log_prob = model_trace["cl"]["fn"].log_prob(model_trace["cl"]["value"])
+
+    return log_prob
+
+
 def get_reference_sample_posterior_power_spectrum(
     run_mcmc=False,
     N=256,
@@ -195,67 +405,21 @@ def get_reference_sample_posterior_power_spectrum(
     """
 
     if run_mcmc:
-        nz = jc.redshift.smail_nz(a, b, z0, gals_per_arcmin2=gals_per_arcmin2)
-        nz_bins = subdivide(nz, nbins=nbins, zphot_sigma=0.05)
+        pl_array, ell = compute_power_spectrum_mass_map(nbins, map_size, m_data)
 
-        l_edges = np.arange(100.0, 5000.0, 50.0)
-        l2 = lt.ConvergenceMap(m_data[..., 0], map_size * u.deg).powerSpectrum(l_edges)[
-            0
-        ]
-        pl_array = []
-        for i, j in itertools.combinations_with_replacement(range(nbins), 2):
-            pi = lt.ConvergenceMap(m_data[..., i], angle=map_size * u.deg).cross(
-                lt.ConvergenceMap(m_data[..., j], angle=map_size * u.deg),
-                l_edges=l_edges,
-            )[1]
-            pl_array.append(pi)
-
-        # Let's define the observations
-        ell = l2
         cl_obs = np.stack(pl_array)
 
-        def lensingPS(
-            N=N,
+        model_lensingPS = partial(
+            _lensingPS,
             map_size=map_size,
             sigma_e=sigma_e,
-        ):
-            # Field parameters
-            f_sky = map_size**2 / 41_253
-
-            # Cosmological parameters
-            omega_c = sample("omega_c", dist.TruncatedNormal(0.2664, 0.2, low=0))
-            omega_b = sample("omega_b", dist.Normal(0.0492, 0.006))
-            sigma_8 = sample("sigma_8", dist.Normal(0.831, 0.14))
-            h_0 = sample("h_0", dist.Normal(0.6727, 0.063))
-            n_s = sample("n_s", dist.Normal(0.9645, 0.08))
-            w_0 = sample("w_0", dist.TruncatedNormal(-1.0, 0.9, low=-2.0, high=-0.3))
-
-            cosmo = jc.Planck15(
-                Omega_c=omega_c, Omega_b=omega_b, h=h_0, n_s=n_s, sigma8=sigma_8, w0=w_0
-            )
-
-            tracer = jc.probes.WeakLensing(nz_bins, sigma_e=sigma_e)
-
-            # Calculate power spectrum
-            cl_noise = jc.angular_cl.noise_cl(ell, [tracer]).flatten()
-            cl, C = jc.angular_cl.gaussian_cl_covariance_and_mean(
-                cosmo, ell, [tracer], f_sky=f_sky, sparse=True
-            )
-
-            # Compute precision matrix
-            P = jc.sparse.to_dense(jc.sparse.inv(jax.lax.stop_gradient(C)))
-            C = jc.sparse.to_dense(C)
-
-            cl = sample(
-                "cl",
-                dist.MultivariateNormal(
-                    cl + cl_noise, precision_matrix=P, covariance_matrix=C
-                ),
-            )
-
-            return cl
-
-        model_lensingPS = partial(lensingPS, N=N, map_size=map_size, sigma_e=sigma_e)
+            a=a,
+            b=b,
+            z0=z0,
+            gals_per_arcmin2=gals_per_arcmin2,
+            ell=ell,
+            nbins=nbins,
+        )
 
         # Now we condition the model on obervations
         observed_model = condition(model_lensingPS, {"cl": cl_obs.flatten()})
@@ -481,106 +645,3 @@ def get_reference_sample_posterior_full_field(
         )
 
         return theta, m_data
-
-
-def compute_power_spectrum_theory(
-    sigma_e,
-    a,
-    b,
-    z0,
-    gals_per_arcmin2,
-    cosmo_params,
-    ell,
-    with_noise=True,
-):
-    """Compute theoric power spectrum given given cosmological
-    parameters, redshift distribution and multipole bin edges
-
-    Parameters
-    ----------
-    sigma_e : float
-        Dispersion of the ellipticity distribution
-    a : float
-        Parameter defining the redshift distribution
-    b : float
-        Parameter defining the redshift distribution
-    z0 : float
-        Parameter defining the redshift distribution
-    gals_per_arcmin2 : int
-        Number of galaxies per arcmin
-    cosmo_params : Array (6)
-        cosmological parameters in the following order:
-        (omega_c, omega_b, sigma_8, h_0, n_s, w_0)
-    ell : Array
-        Multipole bin edges
-    with_noise : bool, optional
-        True if there is noise in the mass_map, by default True
-    Returns
-    -------
-        Theoric power spectrum
-    """
-
-    nbins = 5
-    omega_c, omega_b, sigma_8, h_0, n_s, w_0 = cosmo_params
-
-    # power spectrum from theory
-    cosmo = jc.Planck15(
-        Omega_c=omega_c,
-        Omega_b=omega_b,
-        h=h_0,
-        n_s=n_s,
-        sigma8=sigma_8,
-        w0=w_0,
-    )
-
-    nz = jc.redshift.smail_nz(a, b, z0, gals_per_arcmin2=gals_per_arcmin2)
-    nz_bins = subdivide(nz, nbins=nbins, zphot_sigma=0.05)
-    tracer = jc.probes.WeakLensing(nz_bins, sigma_e=sigma_e)
-
-    cell_theory = jc.angular_cl.angular_cl(cosmo, ell, [tracer])
-    cell_noise = jc.angular_cl.noise_cl(ell, [tracer])
-
-    if with_noise:
-        Cl_theo = cell_theory + cell_noise
-    else:
-        Cl_theo = cell_theory
-
-    return Cl_theo
-
-
-def compute_power_spectrum_mass_map(map_size, mass_map):
-    """Compute the power spectrum of the convergence map
-
-    Parameters
-    ----------
-    map_size : int
-        The total angular size area is given by map_size x map_size
-    mass_map : Array (N,N, nbins)
-        Lensing convergence maps
-
-    Returns
-    -------
-        Power spectrum and ell
-    """
-
-    nbins = 5
-
-    l_edges_kmap = np.arange(100.0, 5000.0, 50.0)
-
-    ell = ConvergenceMap(mass_map[:, :, 0], angle=map_size * u.deg).cross(
-        ConvergenceMap(mass_map[:, :, 0], angle=map_size * u.deg),
-        l_edges=l_edges_kmap,
-    )[0]
-
-    # power spectrum of the map
-    ps = []
-
-    for i, j in itertools.combinations_with_replacement(range(nbins), 2):
-        ps_ij = ConvergenceMap(mass_map[:, :, i], angle=map_size * u.deg).cross(
-            ConvergenceMap(mass_map[:, :, j], angle=map_size * u.deg),
-            l_edges=l_edges_kmap,
-        )[1]
-
-        ps.append(ps_ij)
-
-    return np.array(ps), ell

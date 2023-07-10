@@ -72,12 +72,13 @@ def test_LogNormalmodel():
     for q in range(N_sample):
         cl = []
         for j in range(m_data.shape[0]):
-            cl_exp, ell = compute_power_spectrum_mass_map(map_size, m_data[q][j])
+            cl_exp, ell = compute_power_spectrum_mass_map(nbins, map_size, m_data[q][j])
             cl.append(cl_exp)
 
         cl_exp_mean = jnp.mean(jnp.array(cl), axis=0)
 
         cl_the = compute_power_spectrum_theory(
+            nbins,
             sigma_e,
             a,
             b,

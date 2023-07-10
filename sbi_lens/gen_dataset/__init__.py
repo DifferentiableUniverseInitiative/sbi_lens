@@ -1,1 +1,0 @@
-from sbi_lens.gen_dataset.lensing_lognormal_dataset import LensingLogNormalDataset

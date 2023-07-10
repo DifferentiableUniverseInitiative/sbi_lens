@@ -3,12 +3,9 @@ This code is slightly edited from
 https://jax-cosmo.readthedocs.io/en/latest/_modules/jax_cosmo/scipy/integrate.html#romb
 """
 
-from functools import partial
 
 import jax
 import jax.numpy as np
-from jax import jit
-from jax import vmap
 from jax_cosmo.scipy.integrate import _difftrap1, _difftrapn, _romberg_diff
 
 __all__ = ["romb"]
@@ -26,7 +23,7 @@ __all__ = ["romb"]
 
 
 def romb(function, a, b, args=(), divmax=6, return_error=False):
-  """
+    """
     Romberg integration of a callable function or method.
     Returns the integral of `function` (a function of one variable)
     over the interval (`a`, `b`).
@@ -87,34 +84,36 @@ def romb(function, a, b, args=(), divmax=6, return_error=False):
     >>> print("%g %g" % (2*result, erf(1)))
     0.842701 0.842701
     """
-  vfunc = lambda x: function(x, *args)
 
-  n = 1
-  interval = [a, b]
-  intrange = b - a
-  ordsum = _difftrap1(vfunc, interval)
-  result = intrange * ordsum
-  state = np.repeat(np.atleast_1d(result), divmax + 1, axis=-1)
-  err = np.inf
+    def vfunc(x):
+        return function(x, *args)
 
-  def scan_fn(carry, y):
-    x, k = carry
-    x = _romberg_diff(y, x, k + 1)
-    return (x, k + 1), x
+    n = 1
+    interval = [a, b]
+    intrange = b - a
+    ordsum = _difftrap1(vfunc, interval)
+    result = intrange * ordsum
+    state = np.repeat(np.atleast_1d(result), divmax + 1, axis=-1)
+    err = np.inf
 
-  for i in range(1, divmax + 1):
-    n = 2**i
-    ordsum = ordsum + _difftrapn(vfunc, interval, n)
+    def scan_fn(carry, y):
+        x, k = carry
+        x = _romberg_diff(y, x, k + 1)
+        return (x, k + 1), x
 
-    x = intrange * ordsum / n
-    _, new_state = jax.lax.scan(scan_fn, (x, 0), state[:-1])
+    for i in range(1, divmax + 1):
+        n = 2**i
+        ordsum = ordsum + _difftrapn(vfunc, interval, n)
 
-    new_state = np.concatenate([np.atleast_1d(x), new_state])
+        x = intrange * ordsum / n
+        _, new_state = jax.lax.scan(scan_fn, (x, 0), state[:-1])
 
-    err = np.abs(state[i - 1] - new_state[i])
-    state = new_state
+        new_state = np.concatenate([np.atleast_1d(x), new_state])
 
-  if return_error:
-    return state[i], err
-  else:
-    return state[i]
+        err = np.abs(state[i - 1] - new_state[i])
+        state = new_state
+
+    if return_error:
+        return state[i], err
+    else:
+        return state[i]

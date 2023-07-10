@@ -126,27 +126,30 @@ class LensingLogNormalDataset(tfds.core.GeneratorBasedBuilder):
     def _info(self) -> tfds.core.DatasetInfo:
         """Returns the dataset metadata."""
 
-        return tfds.core.DatasetInfo(
-            builder=self,
-            description=_DESCRIPTION,
-            features=tfds.features.FeaturesDict(
-                {
-                    "simulation": tfds.features.Tensor(
-                        shape=[
-                            self.builder_config.N,
-                            self.builder_config.N,
-                            self.builder_config.nbins,
-                        ],
-                        dtype=tf.float32,
-                    ),
-                    "theta": tfds.features.Tensor(shape=[6], dtype=tf.float32),
-                    "score": tfds.features.Tensor(shape=[6], dtype=tf.float32),
-                }
-            ),
-            supervised_keys=None,
-            homepage="https://dataset-homepage/",
-            citation=_CITATION,
-        )
+      thetas = np.load(
+        DATA_DIR / "posterior_power_spectrum__"
+                      "{}N_{}ms_{}gpa_{}se.npy".format(
+                          self.builder_config.N,
+                          self.builder_config.map_size,
+                          self.builder_config.gal_per_arcmin2,
+                          self.builder_config.sigma_e
+                      )
+      )
+      # 'thinning'
+      nb_sample_min_to_keep = 100_000
+      inds = jax.random.randint(
+        jax.random.PRNGKey(42),
+        (nb_sample_min_to_keep, ),
+        0,
+        thetas.shape[0]
+      )
+      thetas = thetas[inds]
+
+      size_thetas = len(thetas)
+      thetas = thetas.reshape([-1, bs, 6])
+    else:
+        size_thetas = size
+        thetas = np.array([None]).repeat(size // bs)
 
     def _split_generators(self, dl_manager: tfds.download.DownloadManager):
         """Returns SplitGenerators."""

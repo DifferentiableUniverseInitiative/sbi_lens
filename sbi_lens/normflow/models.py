@@ -117,11 +117,11 @@ class ConditionalRealNVP(hk.Module):
             ]
         )
 
-        nvp = tfd.TransformedDistribution(
-            tfd.MultivariateNormalDiag(
-                0.5 * jnp.ones(self.d), scale_identity_multiplier=0.05
-            ),
-            bijector=chain,
-        )
+    nvp = tfd.TransformedDistribution(
+      tfd.MultivariateNormalDiag(
+        0.5 * jnp.ones(self.d),
+        0.05 * jnp.ones(self.d)),
+      bijector=chain
+    )
 
         return nvp

@@ -1,6 +1,6 @@
-import pytest
 import jax
 import jax.numpy as jnp
+import pytest
 import tensorflow_probability as tfp
 from numpy.testing import assert_allclose, assert_equal
 from sbi_lens.normflow.bijectors import MixtureAffineSigmoidBijector

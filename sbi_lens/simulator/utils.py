@@ -156,6 +156,7 @@ def _lensingPS(map_size, sigma_e, a, b, z0, gals_per_arcmin2, ell, nbins):
 
 
 def compute_power_spectrum_theory(
+    nbins,
     sigma_e,
     a,
     b,
@@ -170,6 +171,8 @@ def compute_power_spectrum_theory(
 
     Parameters
     ----------
+    n_bins: int
+        Number of redshift bins
     sigma_e : float
         Dispersion of the ellipticity distribution
     a : float
@@ -192,7 +195,6 @@ def compute_power_spectrum_theory(
         Theoric power spectrum
     """
 
-    nbins = 5
     omega_c, omega_b, sigma_8, h_0, n_s, w_0 = cosmo_params
 
     # power spectrum from theory
@@ -220,11 +222,13 @@ def compute_power_spectrum_theory(
     return Cl_theo
 
 
-def compute_power_spectrum_mass_map(map_size, mass_map):
+def compute_power_spectrum_mass_map(nbins, map_size, mass_map):
     """Compute the power spectrum of the convergence map
 
     Parameters
     ----------
+    n_bins: int
+        Number of redshift bins
     map_size : int
         The total angular size area is given by map_size x map_size
     mass_map : Array (N,N, nbins)
@@ -234,8 +238,6 @@ def compute_power_spectrum_mass_map(map_size, mass_map):
     -------
         Power spectrum and ell
     """
-
-    nbins = 5
 
     l_edges_kmap = np.arange(100.0, 5000.0, 50.0)
 
@@ -259,7 +261,7 @@ def compute_power_spectrum_mass_map(map_size, mass_map):
 
 
 def gaussian_log_likelihood(
-    cosmo_params, mass_map, map_size, sigma_e, a, b, z0, gals_per_arcmin2
+    cosmo_params, mass_map, nbins, map_size, sigma_e, a, b, z0, gals_per_arcmin2
 ):
     """Compute the gaussian likelihood log probrobability
 
@@ -270,6 +272,8 @@ def gaussian_log_likelihood(
         (omega_c, omega_b, sigma_8, h_0, n_s, w_0)
     mass_map : Array (N,N, nbins)
         Lensing convergence maps
+    n_bins: int
+        Number of redshift bins
     map_size : int
         The total angular size area is given by map_size x map_size
     sigma_e : float
@@ -287,7 +291,7 @@ def gaussian_log_likelihood(
     log p(mass_map | cosmo_params)
     """
 
-    pl_array, ell = compute_power_spectrum_mass_map(map_size, mass_map)
+    pl_array, ell = compute_power_spectrum_mass_map(nbins, map_size, mass_map)
 
     cl_obs = np.stack(pl_array)
 
@@ -401,7 +405,7 @@ def get_reference_sample_posterior_power_spectrum(
     """
 
     if run_mcmc:
-        pl_array, ell = compute_power_spectrum_mass_map(map_size, m_data)
+        pl_array, ell = compute_power_spectrum_mass_map(nbins, map_size, m_data)
 
         cl_obs = np.stack(pl_array)
 

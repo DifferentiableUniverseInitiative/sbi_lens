@@ -1,1 +1,4 @@
 select = ["E", "F", "UP", "I"]
+
+[tool.ruff.extend-per-file-ignores]
+"__init__.py" = ["F401"]

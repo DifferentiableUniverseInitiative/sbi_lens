@@ -6,7 +6,6 @@ import astropy.units as u
 import jax
 import jax.numpy as jnp
 import jax_cosmo as jc
-import lenstools as lt
 import numpy as np
 import numpyro
 import numpyro.distributions as dist

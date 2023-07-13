@@ -4,6 +4,7 @@ import jax
 import jax.numpy as jnp
 from numpy.testing import assert_allclose
 from numpyro.handlers import condition, seed, trace
+
 from sbi_lens.config import config_lsst_y_10
 from sbi_lens.simulator.LogNormal_field import lensingLogNormal
 from sbi_lens.simulator.utils import (

@@ -122,7 +122,7 @@ class LensingLogNormalDataset(tfds.core.GeneratorBasedBuilder):
             with_noise=True,
         ),
         LensingLogNormalDatasetConfig(
-            name="year_10_with_noise_score_proposal_proposal",
+            name="year_10_with_noise_score_conditional_proposal",
             N=config_lsst_y_10.N,
             map_size=config_lsst_y_10.map_size,
             gal_per_arcmin2=config_lsst_y_10.gals_per_arcmin2,

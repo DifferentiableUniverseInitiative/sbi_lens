@@ -82,10 +82,12 @@ def get_samples_and_scores(
             "y": model_trace["y"]["value"],
         }
 
-        logp = 0
         if score_type == "density":
+            logp = 0
             for name in params_name:
                 logp += model_trace[name]["fn"].log_prob(model_trace[name]["value"])
+        elif score_type == "conditional":
+            logp = 0
 
         if with_noise:
             logp += (

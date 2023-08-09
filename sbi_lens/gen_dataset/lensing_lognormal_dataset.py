@@ -137,6 +137,22 @@ class LensingLogNormalDataset(tfds.core.GeneratorBasedBuilder):
             score_type="conditional",
             with_noise=True,
         ),
+        LensingLogNormalDatasetConfig(
+            name="year_10_with_noise_score_conditional",
+            N=config_lsst_y_10.N,
+            map_size=config_lsst_y_10.map_size,
+            gal_per_arcmin2=config_lsst_y_10.gals_per_arcmin2,
+            sigma_e=config_lsst_y_10.sigma_e,
+            nbins=config_lsst_y_10.nbins,
+            a=config_lsst_y_10.a,
+            b=config_lsst_y_10.b,
+            z0=config_lsst_y_10.z0,
+            model_type="lognormal",
+            lognormal_shifts="LSSTY10",
+            proposal=False,
+            score_type="conditional",
+            with_noise=True,
+        ),
     ]
 
     def _info(self) -> tfds.core.DatasetInfo:

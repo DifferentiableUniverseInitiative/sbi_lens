@@ -73,9 +73,7 @@ class TrainModelLocal:
         elif loss_name == "train_compressor_gnll":
             self.loss = self.loss_gnll
             if self.dim is None:
-                raise ValueError(
-                    "dim should be specified when using gnll compressor"
-                )
+                raise ValueError("dim should be specified when using gnll compressor")
         elif loss_name == "loss_for_sbi":
             if info_compressor is None:
                 raise ValueError("sbi loss needs compressor informations")

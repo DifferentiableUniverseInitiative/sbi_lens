@@ -1,92 +1,115 @@
-# sbi_lens
+<div align='center'>
+  <ul>
+    <summary><h1>sbi_lens</h1></summary>
+  </ul>
+</div>
+
+<div align="center">
+
+[![CI Test](https://github.com/DifferentiableUniverseInitiative/sbi_lens/workflows/Python%20package/badge.svg)]() [![black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black) [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://github.com/DifferentiableUniverseInitiative/sbi_lens/blob/main/LICENSE) [![All Contributors](https://img.shields.io/badge/all_contributors-4-orange.svg?)](https://github.com/DifferentiableUniverseInitiative/sbi_lens/graphs/contributors)
+
+</div>
+
+<hr><hr>
+
+<div align='center'>
+  <ul>
+    <summary><h2>JAX-based log-normal lensing simulation package.</h2></summary>
+  </ul>
+</div>
+
+`sbi_lens` provides a diferentiable log-normal mass map simulator with 5 tomographic redshift bins and 6 cosmological parameters to infer ($\Omega_c, \Omega_b, \sigma_8, n_s, w_0, h_0$). The shift parameter is computed with [CosMomentum](https://github.com/OliverFHD/CosMomentum) and depends on $\Omega_c, \sigma_8, w_0$.
+
+Note: only LSST year 10 implemented for the moment.
+
+<div align='center'>
+  <ul>
+    <summary><h4>Why log-normal simulations rather than Gaussian ones?</h4></summary>
+  </ul>
+</div>
+
+Due to the non-linear growth of structures in the universe, the density cosmological field is expecteed to be highly non-Gaussian. Therefore log-normal fields which account for non-Guassianities, provide a more realistic representation of the late-time field. The figure below emphasizes this claim by comparing the posterior obtained from power spectrum analysis (which captures only the Gaussian signal) against the one obtained from full field analysis performed through HMC (which extracts the entire signal).
+
+<p align=center>
+    <img src="img/compare_contour_plot.png" style="width:600px;">
+</p>
+
+<hr><hr>
+
 
 # Installation
 
 ```sh
 pip install git+https://github.com/DifferentiableUniverseInitiative/sbi_lens.git
 ```
-
-# Usage
-
-Imports packages.
+# Quick example
 
 ``` python
-from functools import partial
-import jax
-from numpyro.handlers import seed, condition
-from sbi_lens.simulator import lensingLogNormal
-from sbi_lens.simulator.utils import (
-    get_reference_sample_posterior_full_field,
-    get_reference_sample_posterior_power_spectrum
+
+# load lsst year 10 settings
+from sbi_lens.config import config_lsst_y_10
+
+N                = config_lsst_y_10.N
+map_size         = config_lsst_y_10.map_size
+sigma_e          = config_lsst_y_10.sigma_e
+gals_per_arcmin2 = config_lsst_y_10.gals_per_arcmin2
+nbins            = config_lsst_y_10.nbins
+a                = config_lsst_y_10.a
+b                = config_lsst_y_10.b
+z0               = config_lsst_y_10.z0
+
+# define lsst year 10 log normal model
+from sbi_lens.simulator.LogNormal_field import lensingLogNormal
+
+model = partial(
+    lensingLogNormal,
+    N=N,
+    map_size=map_size,
+    gal_per_arcmin2=gals_per_arcmin2,
+    sigma_e=sigma_e,
+    nbins=nbins,
+    a=a,
+    b=b,
+    z0=z0,
+    model_type='lognormal',
+    lognormal_shifts='LSSTY10',
+    with_noise=False,
 )
+
+# simulate one mass map
+from sbi_lens.simulator.utils import get_samples_and_scores
+
+(log_prob, samples), gradients = get_samples_and_scores(
+  model,
+  PRNGKey(0),
+  batch_size=1,
+  with_noise=False
+)
+map_example = samples['y']
 ```
 
-First, we create our fiducials. For this, we define our [lensing model](https://github.com/DifferentiableUniverseInitiative/sbi_lens/blob/main/sbi_lens/simulator/LogNormal_field.py), condition it on our true parameters $\Omega_c$ and $\sigma_8$ and simulate a mass map. Then, we run MCMCs to get reference posteriors from both full field inference and power spectrum one.
-
 ``` python
-# define lensing model
-model = partial(lensingLogNormal,
-                N=128,
-                map_size=5,
-                gal_per_arcmin2=30,
-                sigma_e=0.2,
-                model_type='lognormal')
-
-# condition the model on a given set of parameters
-fiducial_model = condition(model, {'omega_c': 0.3, 'sigma_8': 0.8})
-
-# sample a mass map
-sample_map_fiducial = seed(fiducial_model, jax.random.PRNGKey(42))
-m_data = sample_map_fiducial()
-
-# run MCMCs
-samples_ps = get_reference_sample_posterior_power_spectrum(
-    run_mcmc=True,
-    gals_per_arcmin2=30,
-    sigma_e=0.2,
-    m_data=m_data,
-    num_results=10000,
-    key=jax.random.PRNGKey(0)
-)
-samples_ff = get_reference_sample_posterior_full_field(
-    run_mcmc=True,
-    N=128,
-    map_size=5,
-    gals_per_arcmin2=30,
-    sigma_e=0.2,
-    model=model,
-    m_data=m_data,
-    num_results=10000,
-    key=jax.random.PRNGKey(0)
-)
+for i in range(5):
+  subplot(1,5, i+1)
+  imshow(map_example[0][...,i], cmap='cividis')
+  title('Bin %d'%(i+1))
+  axis('off')
 ```
 <p align=center>
-    <img src="img/doc_observation.png" style="width:350px;">
-    <img src="img/doc_contour.png" style="width:300px;">
+    <img src="img/convergence_map.png" style="width:1000px;">
 </p>
 
-Or we can directly load existing ones.
-
-``` python
-# load reference posteriors, observation m_data, and true parameters
-samples_ps, m_data, truth = get_reference_sample_posterior_power_spectrum(
-    run_mcmc=False,
-    N=128,
-    map_size=5,
-    gals_per_arcmin2=30,
-    sigma_e=0.2,
-)
-samples_ff, _, _ = get_reference_sample_posterior_full_field(
-    run_mcmc=False,
-    N=128,
-    map_size=5,
-    gals_per_arcmin2=30,
-    sigma_e=0.2,
-)
-```
+Check out a full example here: [![colab link](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1pSjhrOJbVi80RQlsVz2oXhVAtxwBhSbn?usp=sharing)
 
 # Contributors
 
-# Licence
+Thanks goes to these wonderful people ([emoji key](https://allcontributors.org/docs/en/emoji-key)):
 
-MIT
+<table>
+  <tr>
+    <td align="center"><a href="https://aboucaud.github.io"><img src="https://avatars0.githubusercontent.com/u/3065310?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Alexandre Boucaud</b></sub></a><br /><a href="https://github.com/DifferentiableUniverseInitiative/sbi_lens/commits?author=aboucaud" title="Code">💻</a></td>
+    <td align="center"><a href="http://flanusse.net"><img src="https://avatars0.githubusercontent.com/u/861591?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Francois Lanusse</b></sub></a><br /><a href="https://github.com/DifferentiableUniverseInitiative/sbi_lens/commits?author=EiffL" title="Code">💻</a></td>
+    <td align="center"><a href="https://www.cosmostat.org/people/denise-lanzieri"><img src="https://avatars.githubusercontent.com/u/72620117?v=4?s=100" width="100px;" alt=""/><br /><sub><b>Denise Lanzieri</b></sub></a><br /><a href="https://github.com/DifferentiableUniverseInitiative/sbi_lens/commits?author=dlanzieri" title="Code">💻</a></td>
+    <td align="center"><a href="https://github.com/Justinezgh"><img src="https://avatars.githubusercontent.com/u/72011736?v=4" width="100px;" alt=""/><br /><sub><b>Justine Zeghal</b></sub></a><br /><a href="https://github.com/DifferentiableUniverseInitiative/sbi_lens/commits?author=Justinezgh" title="Code">💻</a></td>
+  </tr>
+</table>

@@ -10,7 +10,7 @@ tfb = tfp.bijectors
 tfd = tfp.distributions
 
 
-class TrainModelLocal:
+class TrainModel:
     def loss_mse(self, params, theta, x, state_resnet):
         y, opt_state_resnet = self.compressor.apply(params, state_resnet, None, x)
 

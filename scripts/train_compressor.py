@@ -10,7 +10,7 @@ import optax
 import tensorflow as tf
 import tensorflow_datasets as tfds
 import tensorflow_probability as tfp
-from haiku._src.nets.resnet import ResNet18, ResNet34
+from haiku._src.nets.resnet import ResNet18
 from tqdm import tqdm
 
 from sbi_lens.config import config_lsst_y_10
@@ -25,7 +25,6 @@ tfd = tfp.distributions
 # script arguments
 parser = argparse.ArgumentParser()
 parser.add_argument("--total_steps", type=int, default=50)
-parser.add_argument("--resnet", type=str, default="resnet18")
 parser.add_argument("--loss", type=str, default="train_compressor_vmim")
 
 args = parser.parse_args()
@@ -101,15 +100,11 @@ nf = hk.without_apply_rng(
     hk.transform(lambda theta, y: Flow_nd_Compressor()(y).log_prob(theta).squeeze())
 )
 
-# compressor
-if args.resnet == "resnet34":
-    print("ResNet34")
-
-    compressor = hk.transform_with_state(lambda y: ResNet34(dim)(y, is_training=True))
-
-elif args.resnet == "resnet18":
-    print("ResNet18")
-
+if args.loss == "train_compressor_gnll":
+    compressor = hk.transform_with_state(
+        lambda y: ResNet18(int(dim + ((dim**2) - dim) / 2 + dim))(y, is_training=True)
+    )
+else:
     compressor = hk.transform_with_state(lambda y: ResNet18(dim)(y, is_training=True))
 
 print("######## TRAIN ########")
@@ -127,12 +122,21 @@ if args.loss == "train_compressor_vmim":
     parameters_compressor = hk.data_structures.merge(parameters_resnet, params_nf)
 elif args.loss == "train_compressor_mse":
     parameters_compressor = parameters_resnet
+elif args.loss == "train_compressor_gnll":
+    parameters_compressor = parameters_resnet
 
 
 # define optimizer
 total_steps = args.total_steps
+
+if args.loss == "train_compressor_gnll":
+    start_lr = 0.0001
+
+else:
+    start_lr = 0.001
+
 lr_scheduler = optax.piecewise_constant_schedule(
-    init_value=0.001,
+    init_value=start_lr,
     boundaries_and_scales={
         int(total_steps * 0.1): 0.7,
         int(total_steps * 0.2): 0.7,
@@ -189,11 +193,12 @@ for batch in tqdm(range(total_steps + 1)):
             break
 
 # save params
-
 if args.loss == "train_compressor_vmim":
     l_name = "vmim"
 elif args.loss == "train_compressor_mse":
     l_name = "mse"
+elif args.loss == "train_compressor_gnll":
+    l_name = "gnll"
 
 with open(
     DATA_DIR / f"params_compressor/params_nd_compressor_{l_name}.pkl", "wb"

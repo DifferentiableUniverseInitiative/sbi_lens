@@ -3,9 +3,14 @@ from functools import partial
 import jax
 import jax.numpy as jnp
 import optax
+import tensorflow_probability as tfp
+
+tfp = tfp.experimental.substrates.jax
+tfb = tfp.bijectors
+tfd = tfp.distributions
 
 
-class TrainModel:
+class TrainModelLocal:
     def loss_mse(self, params, theta, x, state_resnet):
         y, opt_state_resnet = self.compressor.apply(params, state_resnet, None, x)
 
@@ -27,6 +32,22 @@ class TrainModel:
 
         return -jnp.mean(log_prob), _
 
+    def loss_gnll(self, params, theta, x, state_resnet):
+        y, opt_state_resnet = self.compressor.apply(params, state_resnet, None, x)
+        y_mean = y[..., : self.dim]
+        y_var = y[..., self.dim :]
+        y_var = tfb.FillScaleTriL(diag_bijector=tfb.Softplus(low=1e-3)).forward(y_var)
+
+        @jax.jit
+        @jax.vmap
+        def _get_log_prob(y_mean, y_var, theta):
+            likelihood = tfd.MultivariateNormalTriL(y_mean, y_var)
+            return likelihood.log_prob(theta)
+
+        loss = -jnp.mean(_get_log_prob(y_mean, y_var, theta))
+
+        return loss, opt_state_resnet
+
     def __init__(
         self,
         compressor,
@@ -35,6 +56,7 @@ class TrainModel:
         loss_name,
         nb_pixels,
         nb_bins,
+        dim=None,
         info_compressor=None,
     ):
         self.compressor = compressor
@@ -42,14 +64,21 @@ class TrainModel:
         self.optimizer = optimizer
         self.nb_pixels = nb_pixels
         self.nb_bins = nb_bins
+        self.dim = dim
 
         if loss_name == "train_compressor_mse":
             self.loss = self.loss_mse
         elif loss_name == "train_compressor_vmim":
             self.loss = self.loss_vmim
+        elif loss_name == "train_compressor_gnll":
+            self.loss = self.loss_gnll
+            if self.dim is None:
+                raise ValueError(
+                    "dim (dimension of parameters space) should be specified when using gnll compressor"
+                )
         elif loss_name == "loss_for_sbi":
             if info_compressor is None:
-                raise NotImplementedError
+                raise ValueError("sbi loss needs compressor informations")
             else:
                 self.info_compressor = info_compressor
                 self.loss = self.loss_nll

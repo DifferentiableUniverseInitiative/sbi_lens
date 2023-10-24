@@ -122,6 +122,8 @@ if args.loss == "train_compressor_vmim":
     parameters_compressor = hk.data_structures.merge(parameters_resnet, params_nf)
 elif args.loss == "train_compressor_mse":
     parameters_compressor = parameters_resnet
+elif args.loss == "train_compressor_mae":
+    parameters_compressor = parameters_resnet
 elif args.loss == "train_compressor_gnll":
     parameters_compressor = parameters_resnet
 
@@ -197,6 +199,8 @@ if args.loss == "train_compressor_vmim":
     l_name = "vmim"
 elif args.loss == "train_compressor_mse":
     l_name = "mse"
+elif args.loss == "train_compressor_mae":
+    l_name = "mae"
 elif args.loss == "train_compressor_gnll":
     l_name = "gnll"
 

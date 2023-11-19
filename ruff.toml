@@ -1,4 +1,0 @@
-select = ["E", "F", "UP", "I"]
-
-[per-file-ignores]
-"__init__.py" = ["F401"]

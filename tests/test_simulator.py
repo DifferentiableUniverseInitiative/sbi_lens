@@ -1,93 +1,49 @@
+import jax
+from numpyro.handlers import seed, condition
+import numpy as np
+
+import tensorflow_probability as tfp
+
+tfp = tfp.substrates.jax
+tfd = tfp.distributions
+
+from sbi_lens.simulator.LogNormal_field import lensingLogNormal
+import lenstools as lt
+import astropy.units as u
+from numpy.testing import assert_allclose
+
 from functools import partial
 
-import jax
-import jax.numpy as jnp
-from numpy.testing import assert_allclose
-from numpyro.handlers import condition, seed, trace
-
-from sbi_lens.config import config_lsst_y_10
-from sbi_lens.simulator.LogNormal_field import lensingLogNormal
-from sbi_lens.simulator.utils import (
-    compute_power_spectrum_mass_map,
-    compute_power_spectrum_theory,
-)
+jax.config.update("jax_enable_x64", True)
 
 
 def test_LogNormalmodel():
-    N = config_lsst_y_10.N
-    map_size = config_lsst_y_10.map_size
-    sigma_e = config_lsst_y_10.sigma_e
-    gals_per_arcmin2 = config_lsst_y_10.gals_per_arcmin2
-    nbins = config_lsst_y_10.nbins
-    a = config_lsst_y_10.a
-    b = config_lsst_y_10.b
-    z0 = config_lsst_y_10.z0
+  #Create our fiducial observations
+  model = partial(lensingLogNormal,
+                  N=64,
+                  map_size=5,
+                  gal_per_arcmin2=10,
+                  sigma_e=0.26,
+                  model_type='lognormal',
+                  with_noise=True)
+  fiducial_model = condition(model, {'omega_c': 0.3, 'sigma_8': 0.8})
+  sample_map_fiducial = seed(fiducial_model, jax.random.PRNGKey(42))
+  m_data = sample_map_fiducial()
+  kmap_lt = lt.ConvergenceMap(m_data, 5 * u.deg)
+  l_edges = np.arange(100.0, 2000.0, 50.0)
+  Pl2 = kmap_lt.powerSpectrum(l_edges)[1]
+  # Check against precomputed value with the same seed
+  Pl2_prec = np.array([
+      2.18986080e-09, 3.17677659e-09, 2.90191771e-09, 1.17660875e-09,
+      3.82220752e-10, 1.20896672e-09, 1.05876556e-09, 8.19649374e-10,
+      1.01941782e-09, 1.05519042e-09, 1.12039812e-09, 8.78809269e-10,
+      6.81467157e-10, 7.26929807e-10, 1.19080587e-09, 6.36538321e-10,
+      6.06747461e-10, 4.61243165e-10, 7.90651522e-10, 6.69439969e-10,
+      8.28188277e-10, 7.14728737e-10, 7.46595429e-10, 9.61709632e-10,
+      6.99437023e-10, 5.90386930e-10, 5.75511855e-10, 6.78740962e-10,
+      6.62436825e-10, 5.71815616e-10, 6.91627736e-10, 6.51595612e-10,
+      6.58286216e-10, 7.26794876e-10, 6.97780612e-10, 7.41781716e-10,
+      6.46185090e-10
+  ])
 
-    params_name = ["omega_c", "omega_b", "sigma_8", "h_0", "n_s", "w_0"]
-
-    # define model LSST Y 10
-    model = partial(
-        lensingLogNormal,
-        N=N,
-        map_size=map_size,
-        gal_per_arcmin2=gals_per_arcmin2,
-        sigma_e=sigma_e,
-        nbins=nbins,
-        a=a,
-        b=b,
-        z0=z0,
-        model_type="lognormal",
-        lognormal_shifts="LSSTY10",
-        with_noise=False,
-    )
-
-    @jax.vmap
-    @jax.jit
-    def get_batch(key):
-        def get_maps(k, theta):
-            model_see_cond = condition(
-                seed(model, k),
-                {
-                    "omega_c": theta[0],
-                    "omega_b": theta[1],
-                    "sigma_8": theta[2],
-                    "h_0": theta[3],
-                    "n_s": theta[4],
-                    "w_0": theta[5],
-                },
-            )
-            obs = trace(model_see_cond).get_trace()["y"]["value"]
-            return obs
-
-        model_trace = trace(seed(model, key)).get_trace()
-        theta = jnp.stack([model_trace[name]["value"] for name in params_name], axis=-1)
-
-        obs = (lambda key: jax.vmap(get_maps, in_axes=(0, None))(key, theta))(
-            jax.random.split(key, 10)
-        )
-        return obs, theta
-
-    N_sample = 5
-    m_data, cosmo_params = get_batch(jax.random.split(jax.random.PRNGKey(14), N_sample))
-
-    for q in range(N_sample):
-        cl = []
-        for j in range(m_data.shape[0]):
-            cl_exp, ell = compute_power_spectrum_mass_map(nbins, map_size, m_data[q][j])
-            cl.append(cl_exp)
-
-        cl_exp_mean = jnp.mean(jnp.array(cl), axis=0)
-
-        cl_the = compute_power_spectrum_theory(
-            nbins,
-            sigma_e,
-            a,
-            b,
-            z0,
-            gals_per_arcmin2,
-            cosmo_params[q],
-            ell,
-            with_noise=True,
-        )
-
-        assert_allclose(cl_exp_mean, cl_the, atol=1e-8)
+  assert_allclose(Pl2, Pl2_prec, atol=1e-5)

@@ -18,6 +18,13 @@ class TrainModel:
 
         return loss, opt_state_resnet
 
+    def loss_mae(self, params, theta, x, state_resnet):
+        y, opt_state_resnet = self.compressor.apply(params, state_resnet, None, x)
+
+        loss = jnp.mean(jnp.sum(jnp.absolute(y - theta), axis=1))
+
+        return loss, opt_state_resnet
+
     def loss_vmim(self, params, theta, x, state_resnet):
         y, opt_state_resnet = self.compressor.apply(params, state_resnet, None, x)
         log_prob = self.nf.apply(params, theta, y)

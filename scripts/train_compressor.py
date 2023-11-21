@@ -101,11 +101,11 @@ nf = hk.without_apply_rng(
 )
 
 if args.loss == "train_compressor_gnll":
-    compressor = hk.transform_with_state(
-        lambda y: ResNet18(int(dim + ((dim**2) - dim) / 2 + dim))(y, is_training=True)
-    )
+    resnet_dim = int(dim + ((dim**2) - dim) / 2 + dim)
 else:
-    compressor = hk.transform_with_state(lambda y: ResNet18(dim)(y, is_training=True))
+    resnet_dim = dim
+
+compressor = hk.transform_with_state(lambda y: ResNet18(resnet_dim)(y, is_training=True))
 
 print("######## TRAIN ########")
 
@@ -120,11 +120,7 @@ params_nf = nf.init(
 
 if args.loss == "train_compressor_vmim":
     parameters_compressor = hk.data_structures.merge(parameters_resnet, params_nf)
-elif args.loss == "train_compressor_mse":
-    parameters_compressor = parameters_resnet
-elif args.loss == "train_compressor_mae":
-    parameters_compressor = parameters_resnet
-elif args.loss == "train_compressor_gnll":
+elif args.loss in ["train_compressor_mse", "train_compressor_mae", "train_compressor_gnll"]:
     parameters_compressor = parameters_resnet
 
 

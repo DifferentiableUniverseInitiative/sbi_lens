@@ -23,7 +23,7 @@ class TrainModel:
         self.compressor = compressor
         self.nf = nf
         self.optimizer = optimizer
-        self.dim = dim # summary statistic dimension
+        self.dim = dim  # summary statistic dimension
 
         if loss_name == "train_compressor_mse":
             self.loss = self.loss_mse
@@ -41,8 +41,7 @@ class TrainModel:
                 self.loss = self.loss_nll
 
     def loss_mse(self, params, theta, x, state_resnet):
-        """Compute the Mean Squared Error loss
-        """
+        """Compute the Mean Squared Error loss"""
         y, opt_state_resnet = self.compressor.apply(params, state_resnet, None, x)
 
         loss = jnp.mean(jnp.sum((y - theta) ** 2, axis=1))
@@ -50,8 +49,7 @@ class TrainModel:
         return loss, opt_state_resnet
 
     def loss_mae(self, params, theta, x, state_resnet):
-        """Compute the Mean Absolute Error loss
-        """
+        """Compute the Mean Absolute Error loss"""
         y, opt_state_resnet = self.compressor.apply(params, state_resnet, None, x)
 
         loss = jnp.mean(jnp.sum(jnp.absolute(y - theta), axis=1))
@@ -59,16 +57,14 @@ class TrainModel:
         return loss, opt_state_resnet
 
     def loss_vmim(self, params, theta, x, state_resnet):
-        """Compute the Variational Mutual Information Maximization loss
-        """
+        """Compute the Variational Mutual Information Maximization loss"""
         y, opt_state_resnet = self.compressor.apply(params, state_resnet, None, x)
         log_prob = self.nf.apply(params, theta, y)
 
         return -jnp.mean(log_prob), opt_state_resnet
 
     def loss_gnll(self, params, theta, x, state_resnet):
-        """Compute the Gaussian Negative Log Likelihood loss
-        """
+        """Compute the Gaussian Negative Log Likelihood loss"""
         y, opt_state_resnet = self.compressor.apply(params, state_resnet, None, x)
         y_mean = y[..., : self.dim]
         y_var = y[..., self.dim :]

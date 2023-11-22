@@ -20,6 +20,7 @@ from sbi_lens.simulator.LogNormal_field import lensingLogNormal
 tfp = tfp.substrates.jax
 tfd = tfp.distributions
 
+
 class ForwardModelMassMap:
     def __init__(self, config, model_type, lognormal_shifts, with_noise):
         self.config = config

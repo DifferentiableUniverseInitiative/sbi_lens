@@ -1,3 +1,8 @@
+import jax_cosmo as jc
+
+from sbi_lens.simulator.redshift import subdivide
+
+
 class Config:
     def __init__(
         self,
@@ -25,6 +30,13 @@ class Config:
         self.a = a
         self.b = b
         self.z0 = z0
+        self.f_sky = self.map_size**2 / 41_253
+        self.nz = jc.redshift.smail_nz(
+            self.a, self.b, self.z0, gals_per_arcmin2=self.gals_per_arcmin2
+        )
+        self.nz_bins = subdivide(self.nz, nbins=self.nbins, zphot_sigma=0.05)
+        self.tracer = jc.probes.WeakLensing(self.nz_bins, sigma_e=self.sigma_e)
+
         self.params_name_latex = [
             "$\Omega_c$",
             "$\Omega_b$",

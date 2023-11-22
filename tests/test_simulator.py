@@ -5,15 +5,14 @@ import jax.numpy as jnp
 from numpy.testing import assert_allclose
 from numpyro.handlers import condition, seed, trace
 
-from sbi_lens.config import config_lsst_y_10
+from sbi_lens.simulator.config import config_lsst_y_10
 from sbi_lens.simulator.LogNormal_field import lensingLogNormal
-from sbi_lens.simulator.utils import (
-    compute_power_spectrum_mass_map,
-    compute_power_spectrum_theory,
-)
+from sbi_lens.simulator.utils import UtilsFunctions
 
 
 def test_LogNormalmodel():
+    utils_functions = UtilsFunctions(config_lsst_y_10)
+
     N = config_lsst_y_10.N
     map_size = config_lsst_y_10.map_size
     sigma_e = config_lsst_y_10.sigma_e
@@ -22,8 +21,7 @@ def test_LogNormalmodel():
     a = config_lsst_y_10.a
     b = config_lsst_y_10.b
     z0 = config_lsst_y_10.z0
-
-    params_name = ["omega_c", "omega_b", "sigma_8", "h_0", "n_s", "w_0"]
+    params_name = config_lsst_y_10.params_name
 
     # define model LSST Y 10
     model = partial(
@@ -73,21 +71,15 @@ def test_LogNormalmodel():
     for q in range(N_sample):
         cl = []
         for j in range(m_data.shape[0]):
-            cl_exp, ell = compute_power_spectrum_mass_map(nbins, map_size, m_data[q][j])
+            cl_exp, ell = utils_functions.compute_power_spectrum_mass_map(m_data[q][j])
             cl.append(cl_exp)
 
         cl_exp_mean = jnp.mean(jnp.array(cl), axis=0)
 
-        cl_the = compute_power_spectrum_theory(
-            nbins,
-            sigma_e,
-            a,
-            b,
-            z0,
-            gals_per_arcmin2,
+        cl_the, cl_noise = utils_functions.compute_power_spectrum_theory(
             cosmo_params[q],
             ell,
             with_noise=True,
         )
-
+        cl_the = cl_the + cl_noise
         assert_allclose(cl_exp_mean, cl_the, atol=1e-8)

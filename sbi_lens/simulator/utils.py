@@ -236,9 +236,10 @@ class ForwardModelMassMap:
         )
 
         samples_ff_store = []
+        nb_of_log_prob_evaluation = []
         mcmc.run(key, extra_fields=("num_steps",))
         samples_ = mcmc.get_samples()
-        nb_of_log_prob_evaluation = mcmc.get_extra_fields()["num_steps"].sum()
+        nb_of_log_prob_evaluation.append(mcmc.get_extra_fields()["num_steps"])
         mcmc.post_warmup_state = mcmc.last_state
 
         # save only sample of interest
@@ -258,7 +259,7 @@ class ForwardModelMassMap:
         for i in range(1, nb_loop):
             mcmc.run(mcmc.post_warmup_state.rng_key, extra_fields=("num_steps",))
             samples_ = mcmc.get_samples()
-            nb_of_log_prob_evaluation += mcmc.get_extra_fields()["num_steps"].sum()
+            nb_of_log_prob_evaluation.append(mcmc.get_extra_fields()["num_steps"])
             mcmc.post_warmup_state = mcmc.last_state
 
             # save only sample of interest
@@ -556,6 +557,6 @@ class ForwardModelPowerSpectrum:
             axis=-1,
         )
 
-        nb_of_log_prob_evaluation = mcmc.get_extra_fields()["num_steps"].sum()
+        nb_of_log_prob_evaluation = mcmc.get_extra_fields()["num_steps"]
 
         return samples, nb_of_log_prob_evaluation

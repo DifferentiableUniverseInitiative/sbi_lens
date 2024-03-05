@@ -20,6 +20,13 @@ from sbi_lens.simulator.LogNormal_field import lensingLogNormal
 tfp = tfp.substrates.jax
 tfd = tfp.distributions
 
+np.complex = complex
+np.float = float
+
+SOURCE_FILE = Path(__file__)
+SOURCE_DIR = SOURCE_FILE.parent
+ROOT_DIR = SOURCE_DIR.parent.resolve()
+DATA_DIR = ROOT_DIR / "data"
 
 class ForwardModelMassMap:
     def __init__(self, config, model_type, lognormal_shifts, with_noise):

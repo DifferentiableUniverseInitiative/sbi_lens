@@ -12,7 +12,7 @@ setup(
     },
     include_package_data=True,
     install_requires=[
-        "numpy>=1.22.4,<1.24",
+        "numpy>=1.22.4",
         "jax>=0.4.1",
         "tensorflow_probability>=0.19.0",
         "dm-haiku>=0.0.9",
@@ -24,5 +24,6 @@ setup(
         "optax>=0.1.4",
         "scikit-learn>=1.2.0",
         "wheel",
+        "JaxPM @ git+https://github.com/DifferentiableUniverseInitiative/JaxPM.git",
     ],
 )

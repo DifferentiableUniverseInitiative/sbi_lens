@@ -24,5 +24,6 @@ setup(
         "optax>=0.1.4",
         "scikit-learn>=1.2.0",
         "wheel",
+        "JaxPM @ git+https://github.com/DifferentiableUniverseInitiative/JaxPM.git",
     ],
 )

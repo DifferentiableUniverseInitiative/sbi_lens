@@ -20,6 +20,9 @@ from sbi_lens.simulator.redshift import subdivide
 tfp = tfp.substrates.jax
 tfd = tfp.distributions
 
+np.complex = complex
+np.float = float
+
 SOURCE_FILE = Path(__file__)
 SOURCE_DIR = SOURCE_FILE.parent
 ROOT_DIR = SOURCE_DIR.parent.resolve()

@@ -183,7 +183,7 @@ def lensingLpt(
     a,
     b,
     z0,
-    with_noise=True
+    with_noise=True,
 ):
     """
     This function defines the top-level forward model for our observations
@@ -215,7 +215,7 @@ def lensingLpt(
     )
 
     # Generate random convergence maps
-    nz = jc.redshift.smail_nz(a, b, z0, gals_per_arcmin2=gal_per_arcmin2)
+    nz = jc.redshift.smail_nz(a, b, z0, gals_per_arcmin2=gal_per_arcmin2, zmax=2.6)
     nz_shear = subdivide(nz, nbins=nbins, zphot_sigma=0.05)
 
     lensing_model = jax.jit(

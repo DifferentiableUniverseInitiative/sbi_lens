@@ -47,8 +47,8 @@ class LensingLPTDatasetConfig(tfds.core.BuilderConfig):
         super().__init__(description=("LPT lensing simulations."), version=v1, **kwargs)
         self.N = N
         self.map_size = map_size
-        box_size = box_size
-        box_shape = box_shape
+        self.box_size = box_size
+        self.box_shape = box_shape
         self.gal_per_arcmin2 = gal_per_arcmin2
         self.sigma_e = sigma_e
         self.nbins = nbins
@@ -69,8 +69,8 @@ class LensingLPTDataset(tfds.core.GeneratorBasedBuilder):
     BUILDER_CONFIGS = [
         LensingLPTDatasetConfig(
             name="year_10_with_noise_score_density",
-            N=config_lsst_y_10.N,
-            map_size=config_lsst_y_10.map_size,
+            N=60,
+            map_size=5,
             box_size=[400.0, 400.0, 4000.0],
             box_shape=[300, 300, 128],
             gal_per_arcmin2=config_lsst_y_10.gals_per_arcmin2,
@@ -84,8 +84,8 @@ class LensingLPTDataset(tfds.core.GeneratorBasedBuilder):
         ),
         LensingLPTDatasetConfig(
             name="year_10_without_noise_score_density",
-            N=config_lsst_y_10.N,
-            map_size=config_lsst_y_10.map_size,
+            N=60,
+            map_size=5,
             box_size=[400.0, 400.0, 4000.0],
             box_shape=[300, 300, 128],
             gal_per_arcmin2=config_lsst_y_10.gals_per_arcmin2,
@@ -99,8 +99,8 @@ class LensingLPTDataset(tfds.core.GeneratorBasedBuilder):
         ),
         LensingLPTDatasetConfig(
             name="year_10_with_noise_score_conditional",
-            N=config_lsst_y_10.N,
-            map_size=config_lsst_y_10.map_size,
+            N=60,
+            map_size=5,
             box_size=[400.0, 400.0, 4000.0],
             box_shape=[300, 300, 128],
             gal_per_arcmin2=config_lsst_y_10.gals_per_arcmin2,
@@ -150,7 +150,7 @@ class LensingLPTDataset(tfds.core.GeneratorBasedBuilder):
 
     def _generate_examples(self, size):
         """Yields examples."""
-        bs = 20
+        bs = 5
 
         model = partial(
             lensingLpt,

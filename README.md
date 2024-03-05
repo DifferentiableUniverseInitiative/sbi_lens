@@ -14,28 +14,13 @@
 
 <div align='center'>
   <ul>
-    <summary><h2>JAX-based log-normal lensing simulation package.</h2></summary>
+    <summary><h2>JAX-based lensing simulation package.</h2></summary>
   </ul>
 </div>
 
-`sbi_lens` provides a diferentiable log-normal mass map simulator with 5 tomographic redshift bins and 6 cosmological parameters to infer ($\Omega_c, \Omega_b, \sigma_8, n_s, w_0, h_0$). The shift parameter is computed with [CosMomentum](https://github.com/OliverFHD/CosMomentum) and depends on $\Omega_c, \sigma_8, w_0$.
-
-Note: only LSST year 10 implemented for the moment.
-
-<div align='center'>
-  <ul>
-    <summary><h4>Why log-normal simulations rather than Gaussian ones?</h4></summary>
-  </ul>
-</div>
-
-Due to the non-linear growth of structures in the universe, the density cosmological field is expecteed to be highly non-Gaussian. Therefore log-normal fields which account for non-Guassianities, provide a more realistic representation of the late-time field. The figure below emphasizes this claim by comparing the posterior obtained from power spectrum analysis (which captures only the Gaussian signal) against the one obtained from full field analysis performed through HMC (which extracts the entire signal).
-
-<p align=center>
-    <img src="img/compare_contour_plot.png" style="width:600px;">
-</p>
+`sbi_lens` provides a range of lensing forward models, including Gaussian model, log-normal model and LPT model. Powered by JAX, our codebase is fast and fully differentiable. It is specifically designed to match  LSST Y10 survey setting, but it can be easily adapted.
 
 <hr><hr>
-
 
 # Installation
 
@@ -44,27 +29,28 @@ pip install git+https://github.com/DifferentiableUniverseInitiative/sbi_lens.git
 ```
 # Quick example
 
-``` python
-
+```python
 # load lsst year 10 settings
 from sbi_lens.config import config_lsst_y_10
 
-N                = config_lsst_y_10.N
-map_size         = config_lsst_y_10.map_size
 sigma_e          = config_lsst_y_10.sigma_e
 gals_per_arcmin2 = config_lsst_y_10.gals_per_arcmin2
 nbins            = config_lsst_y_10.nbins
 a                = config_lsst_y_10.a
 b                = config_lsst_y_10.b
 z0               = config_lsst_y_10.z0
+```
 
+
+**Log-Normal Simulation**
+``` python
 # define lsst year 10 log normal model
 from sbi_lens.simulator.LogNormal_field import lensingLogNormal
 
-model = partial(
+model_log_normal = partial(
     lensingLogNormal,
-    N=N,
-    map_size=map_size,
+    N=60,
+    map_size=5,
     gal_per_arcmin2=gals_per_arcmin2,
     sigma_e=sigma_e,
     nbins=nbins,
@@ -80,26 +66,69 @@ model = partial(
 from sbi_lens.simulator.utils import get_samples_and_scores
 
 (log_prob, samples), gradients = get_samples_and_scores(
-  model,
+  model_log_normal,
   PRNGKey(0),
   batch_size=1,
   with_noise=False
 )
-map_example = samples['y']
+map_example_log_normal = samples['y']
 ```
 
 ``` python
 for i in range(5):
   subplot(1,5, i+1)
-  imshow(map_example[0][...,i], cmap='cividis')
+  imshow(map_example_log_normal[0][...,i], cmap='cividis')
   title('Bin %d'%(i+1))
   axis('off')
 ```
 <p align=center>
-    <img src="img/convergence_map.png" style="width:1000px;">
+    <img src="img/convergence_map_lognormal.png" style="width:1000px;">
 </p>
 
-Check out a full example here: [![colab link](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1pSjhrOJbVi80RQlsVz2oXhVAtxwBhSbn?usp=sharing)
+
+**LPT Simulation**
+``` python
+# define lsst year 10 lpt model
+from sbi_lens.simulator.Lpt_field import lensingLpt
+model_lpt = partial(
+    lensingLpt,
+    N=60,
+    map_size=5,
+    box_size=[400.0, 400.0, 4000.0],
+    box_shape=[300, 300, 128],
+    gal_per_arcmin2=gals_per_arcmin2,
+    sigma_e=sigma_e,
+    nbins=nbins,
+    a=a,
+    b=b,
+    z0=z0,
+    with_noise=False,
+)
+
+# simulate one mass map
+from sbi_lens.simulator.utils import get_samples_and_scores
+
+(log_prob, samples), gradients = get_samples_and_scores(
+  model_lpt,
+  PRNGKey(0),
+  batch_size=1,
+  with_noise=False
+)
+map_example_lpt = samples['y']
+```
+
+``` python
+for i in range(5):
+  subplot(1,5, i+1)
+  imshow(map_example_lpt[0][...,i], cmap='cividis')
+  title('Bin %d'%(i+1))
+  axis('off')
+```
+<p align=center>
+    <img src="img/convergence_map_lpt.png" style="width:1000px;">
+</p>
+
+Check out an example of the cool things you can do with `sbi_lens` here: [![colab link](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1pSjhrOJbVi80RQlsVz2oXhVAtxwBhSbn?usp=sharing)
 
 # Contributors
 

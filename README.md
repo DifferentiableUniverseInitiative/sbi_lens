@@ -18,8 +18,7 @@
   </ul>
 </div>
 
-`sbi_lens` provides a range of lensing forward models, including Gaussian model, log-normal model and LPT model. Powered by JAX, our codebase is fast and fully differentiable.
-It is specifically designed to match  LSST Y10 survey setting, but it can be easily adapted.
+`sbi_lens` provides a range of lensing forward models, including Gaussian model, log-normal model and LPT model. Powered by JAX, our codebase is fast and fully differentiable. It is specifically designed to match  LSST Y10 survey setting, but it can be easily adapted.
 
 <hr><hr>
 
@@ -41,6 +40,7 @@ a                = config_lsst_y_10.a
 b                = config_lsst_y_10.b
 z0               = config_lsst_y_10.z0
 ```
+
 
 **Log-Normal Simulation**
 ``` python
@@ -128,7 +128,7 @@ for i in range(5):
     <img src="img/convergence_map_lpt.png" style="width:1000px;">
 </p>
 
-Check out a full example here: [![colab link](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1pSjhrOJbVi80RQlsVz2oXhVAtxwBhSbn?usp=sharing)
+Check out an example of the cool things you can do with `sbi_lens` here: [![colab link](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1pSjhrOJbVi80RQlsVz2oXhVAtxwBhSbn?usp=sharing)
 
 # Contributors
 

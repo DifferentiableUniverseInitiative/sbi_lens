@@ -42,8 +42,8 @@ b                = config_lsst_y_10.b
 z0               = config_lsst_y_10.z0
 ```
 
+**Log-Normal Simulation** 
 ``` python
-
 # define lsst year 10 log normal model
 from sbi_lens.simulator.LogNormal_field import lensingLogNormal
 
@@ -86,6 +86,7 @@ for i in range(5):
 </p>
 
 
+**LPT Simulation** 
 ``` python
 # define lsst year 10 lpt model
 from sbi_lens.simulator.Lpt_field import lensingLpt

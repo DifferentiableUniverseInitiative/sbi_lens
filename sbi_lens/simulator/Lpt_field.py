@@ -183,6 +183,7 @@ def lensingLpt(
     a,
     b,
     z0,
+    with_noise=True
 ):
     """
     This function defines the top-level forward model for our observations
@@ -229,15 +230,18 @@ def lensingLpt(
     field, _ = lensing_model(cosmo, nz_shear, initial_conditions)
     field = jnp.transpose(jnp.array(field), [1, 2, 0])
 
-    x = numpyro.sample(
-        "y",
-        dist.MultivariateNormal(
-            loc=field,
-            covariance_matrix=jnp.diag(
-                sigma_e**2
-                / (jnp.array([b.gals_per_arcmin2 for b in nz_shear]) * pix_area)
+    if with_noise is True:
+        x = numpyro.sample(
+            "y",
+            dist.MultivariateNormal(
+                loc=field,
+                covariance_matrix=jnp.diag(
+                    sigma_e**2
+                    / (jnp.array([b.gals_per_arcmin2 for b in nz_shear]) * pix_area)
+                ),
             ),
-        ),
-    )
+        )
+    else:
+        x = numpyro.deterministic("y", field)
 
     return x

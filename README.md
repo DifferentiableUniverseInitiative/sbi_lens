@@ -19,7 +19,7 @@
 </div>
 
 `sbi_lens` provides a range of lensing forward models, including Gaussian model, log-normal model and LPT model. Powered by JAX, our codebase is fast and fully differentiable.
-It is specifically designed to match  LSST Y10 survey setting, but it can be easily adapted. 
+It is specifically designed to match  LSST Y10 survey setting, but it can be easily adapted.
 
 <hr><hr>
 
@@ -42,7 +42,7 @@ b                = config_lsst_y_10.b
 z0               = config_lsst_y_10.z0
 ```
 
-**Log-Normal Simulation** 
+**Log-Normal Simulation**
 ``` python
 # define lsst year 10 log normal model
 from sbi_lens.simulator.LogNormal_field import lensingLogNormal
@@ -86,7 +86,7 @@ for i in range(5):
 </p>
 
 
-**LPT Simulation** 
+**LPT Simulation**
 ``` python
 # define lsst year 10 lpt model
 from sbi_lens.simulator.Lpt_field import lensingLpt

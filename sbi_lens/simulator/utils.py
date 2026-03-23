@@ -10,7 +10,6 @@ import numpy as np
 import numpyro
 import numpyro.distributions as dist
 import tensorflow_probability as tfp
-from lenstools import ConvergenceMap
 from numpyro import sample
 from numpyro.handlers import condition, reparam, seed, trace
 from numpyro.infer.reparam import LocScaleReparam, TransformReparam
@@ -242,6 +241,14 @@ def compute_power_spectrum_mass_map(nbins, map_size, mass_map):
     -------
         Power spectrum and ell
     """
+
+    try:
+        from lenstools import ConvergenceMap
+    except ImportError as e:
+        raise ImportError(
+            "lenstools is required for compute_power_spectrum_mass_map. "
+            "Install it with: pip install 'sbi_lens[power_spectrum]'"
+        ) from e
 
     l_edges_kmap = np.arange(100.0, 5000.0, 50.0)
 
